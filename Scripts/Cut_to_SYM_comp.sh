@@ -7,7 +7,7 @@
 
 
 #Directory where the month stacks can be found
-stackdir=/data/dna/rmartin/Ambient_noise/Alaska/TEST_WORKFLOW/2/COR/STACKS
+stackdir=/data/dna/rmartin/Ambient_noise/Alaska/DATA/COR/STACKS/
 
 cwd=(`pwd`)
 echo $cwd

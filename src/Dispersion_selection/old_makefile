@@ -1,0 +1,22 @@
+BIN = select_dispersion_snr_and_dist_phase_only
+INST_DIR = ../../../x
+CC = gcc
+HEADERFLAGS = -I../../../include
+LIBDIRFLAGS = -L/usr/local/lib64 -L/usr/local/lib -L../../../lib -L./
+
+INCLUDE = -I.
+
+CFLAGS = -lfftw3 -lm -g -O2 -Wall
+
+#OBJ =  select_dispersion_2.c lib_select_dispersion.c
+OBJ = select_dispersion_snr_and_dist_phase_only.o lib_select_dispersion.o
+
+all : $(OBJ)  
+	$(CC) $(OBJ) $(INCLUDE) $(CFLAGS) -o $(INST_DIR)/$(BIN)
+
+install :
+	install -s $(INST_DIR)/$(BIN)
+
+clean :
+	rm -f $(BIN) $(INST_DIR)/$(BIN)
+

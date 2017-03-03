@@ -17,7 +17,7 @@ the input model you want (must be preset) and the coordinates at which to calcul
 
 
 Run Select_Dispersion_SNR_DIST.sh - edit this script to point to the output direcory where you want the dispersion curves to end up
-This will extract phase abd group velocities and generate the curves 
+This will extract phase and group velocities and generate the curves 
 
 Time to run the tomography step (itomo needs to be installed)
 cd to the newly created dispersion curves directory and run 
