@@ -105,6 +105,8 @@ int main (int argc, char *argv[]) {
 		}
 	}
 
+	fprintf(stdout,"Percentile %f",percentile);
+
 	/* close the parameter file */
 	fclose(paramFile);
 
@@ -143,6 +145,7 @@ int main (int argc, char *argv[]) {
 			/* copy into sorting array */
 			if (sqrtf( (xTmp * xTmp) + (yTmp * yTmp)) >= 1.0/maxSpeed) {
 				sorting[i] = data[x][y];
+				//fprintf(stdout,"i val %i",i);
 				i++;
 			}
 		}
@@ -154,9 +157,19 @@ int main (int argc, char *argv[]) {
 	/* sort the data */
 	qsort(sorting,i,sizeof(float),float_cmp);
 
+	fprintf(stdout,"Percentile %f\n",percentile);
+	fprintf(stdout,"i %i\n",i);
+
+	//PERCENTILE_CORRIDOR = 2.0;
+	fprintf(stdout,"PC %f\n",PERCENTILE_CORRIDOR);
+
 	/* get the percentile value */
-	nodeTop = floor(i * (percentile + PERCENTILE_CORRIDOR/2) / 100.0 + .5);
-	nodeBottom = floor(i * (percentile - PERCENTILE_CORRIDOR/2) / 100.0 + .5);
+	nodeTop = floor(i * (percentile + PERCENTILE_CORRIDOR/2.0) / 100.0 + .5);
+	nodeBottom = floor(i * (percentile - PERCENTILE_CORRIDOR/2.0) / 100.0 + .5);
+
+	fprintf(stdout,"Node bottom %f\n",nodeBottom);
+	fprintf(stdout,"Node top %f\n",nodeTop);
+
 	/* avoid going out of bounds */
 	if (nodeTop < totalNodes) {
 		percentileValueTop = sorting[nodeTop];

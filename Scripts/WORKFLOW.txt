@@ -15,6 +15,10 @@ Time to run FTAN: Copy the script Run_FTAN.sh into STACKS directory. Be sure to 
 - Make the example dispersion curve by running Generate_dispersion.sh in a directory containing the file 0.0_0.0_calculated_dispersion. Edit this script with 
 the input model you want (must be preset) and the coordinates at which to calculate the dispersion curve
 
+To make a new dispersion curve, run Generate_dispersion.exe [model file] [example dispersion]
+The model file must be an earth model with columns:
+depth p-vel s-vel density uncertainty 
+
 
 Run Select_Dispersion_SNR_DIST.sh - edit this script to point to the output direcory where you want the dispersion curves to end up
 This will extract phase and group velocities and generate the curves 

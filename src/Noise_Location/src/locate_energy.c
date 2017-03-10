@@ -28,7 +28,7 @@ output: fk.txt, ascii file with "SlownessEast SlownessNorth Energy" for all
 #define ST_FILE "station.lst"
 
 
-#define NPT 100
+#define NPT 20
 /*half a side of the space. increase for more precision*/
 
 #define RHO 1.
@@ -61,7 +61,7 @@ typedef struct {
 } CORR;
 
 
-#define NSTATIONS 100
+#define NSTATIONS 200
 /* maximum number of stations*/
 #define NCORR NSTATIONS*NSTATIONS/2
 /* maximum number of correlations*/
