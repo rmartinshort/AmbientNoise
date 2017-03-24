@@ -94,8 +94,15 @@ def main():
     sacfiles = glob.glob('*SAC')
     sstream, sdists = gen_stream(sacfiles)
 
-    #plot the two sided X correlations 
-    plotstream(sstream,sdists,100)
+    #filter in the microseismic band
+    print 'Filtering traces'
+    sstream = sstream.filter("bandpass",freqmin=0.01,freqmax=0.2) 
+
+    print 'Filtered traces'
+
+    #plot the two sided X correlations
+    maxtraces = 100
+    plotstream(sstream,sdists,maxtraces)
 
 
 

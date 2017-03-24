@@ -1,5 +1,7 @@
 #!/bin/bash
 
+#Run this in directories containing one-sided XC SAC files, denoted *_s 
+
 
 if [ -f 'tlist.tmp' ]; then 
 	rm tlist.tmp

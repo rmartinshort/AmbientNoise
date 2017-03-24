@@ -1,4 +1,5 @@
 #!/bin/bash
+
 low=$1
 high=$2
 
