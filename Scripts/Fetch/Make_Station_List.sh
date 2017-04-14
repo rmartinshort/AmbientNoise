@@ -8,6 +8,7 @@
 #This file, station.list, gets used in various other scripts during the ambient noise processing
 #workflow
 
+datadir="/data/dna/rmartin/Ambient_noise/Alaska/AK_ONLY"
 datadir="/data/dna/rmartin/Ambient_noise/Alaska/ALL_DATA"
 
 currendir=`pwd`
@@ -18,9 +19,9 @@ if [ ! -d $datadir ]; then
 fi
 
 cd $datadir
+pwd
 
-years=( 'seq 2013 2017' )
-years=( '2015' )
+years=( `seq 2014 2017` )
 months=( `seq -w 1 12` )
 days=( `seq -w 1 31` )
 

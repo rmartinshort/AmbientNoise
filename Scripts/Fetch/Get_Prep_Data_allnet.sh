@@ -11,7 +11,7 @@
 #to download from
 
 #Enter the directory where you want to build the data structure here
-datadir=/data/dna/rmartin/Ambient_noise/Alaska/AK_ONLY
+datadir=/data/dna/rmartin/Ambient_noise/Alaska/ALL_DATA
 
 cwd=`pwd`
 
@@ -32,7 +32,7 @@ lonmin=-171
 lonmax=-123
 
 #Not needed if we want all the available stations
-NETWORK='AK'
+#NETWORK='AK'
 #If network is not specified, all available data within a region will be obtained
 #This could be a lot of data, so be careful! 
 
@@ -49,10 +49,10 @@ for year in "${years[@]}"; do
 			endTime="${year}-${month}-${day}T23:59:59"
 
 			#Get all the PZ response data for the period of time
-			FetchData -vvv -L '--' --lat ${latmin}:${latmax} --lon ${longmin}:${longmax} -C 'LHZ' -s $startTime -e $endTime --net $NETWORK -sd resp_dir
+			FetchData -vvv -L '--' --lat ${latmin}:${latmax} --lon ${longmin}:${longmax} -C 'LHZ' -s $startTime -e $endTime -sd resp_dir
 
 			#Actually get the data - this can be buggy, so maybe think of a better way
-			FetchData -vvv -L '--' --lat ${latmin}:${latmax} --lon ${longmin}:${longmax} -C 'LHZ' -s $startTime -e $endTime --net $NETWORK -o ${year}_${month}_${day}.mseed -m ${year}_${month}_${day}.metafile
+			FetchData -vvv -L '--' --lat ${latmin}:${latmax} --lon ${longmin}:${longmax} -C 'LHZ' -s $startTime -e $endTime -o ${year}_${month}_${day}.mseed -m ${year}_${month}_${day}.metafile
 
 			mseed2sac -m ${year}_${month}_${day}.metafile ${year}_${month}_${day}.mseed
 

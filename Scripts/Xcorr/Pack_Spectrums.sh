@@ -58,6 +58,17 @@ lastday_sacfile=$(ls ${base_dir}/${year}/${month}/${end_month_day}/*_re | head -
 start_jday=`/data/dna/rmartin/Ambient_noise/CODES/src/SAC_readers/bin/get_start_time.exe $firstday_sacfile | awk '{print $2}'`
 end_jday=`/data/dna/rmartin/Ambient_noise/CODES/src/SAC_readers/bin/get_start_time.exe $lastday_sacfile | awk '{print $2}'`
 
+#Check to see that these day determinations are reasonable - sometimes they are not and the day directory at fault
+#needs to be deleted
+if [ $start_jday -gt $end_jday ]; then
+        rm -rf ${base_dir}/${year}/${month}/${end_month_day}
+        end_month_day=30 #will be the case in all months except feb, which seems to be handled correctly
+	lastday_sacfile=$(ls ${base_dir}/${year}/${month}/${end_month_day}/*_re | head -1)
+	start_jday=`get_start_time $firstday_sacfile | awk '{print $2}'`
+	end_jday=`get_start_time $lastday_sacfile | awk '{print $2}'`
+fi
+
+
 #Create the parameter file for input to the C code 
 echo "$year $month" > param.dat
 echo "$start_month_day $end_month_day" >> param.dat
@@ -74,14 +85,15 @@ cat param.dat
 echo "You can reuse this in future runs as:"
 echo "make_ant_db param.dat"
 
-read -n1 -r -p  "if this file looks correct, hit space to continue" key
-if [ "$key" = '' ]; then 
+#read -n1 -r -p  "if this file looks correct, hit space to continue" key
+#if [ "$key" = '' ]; then 
    #Edit the excutable once the new version is ready
    #pack_spectrums param.dat
-   /data/dna/rmartin/Ambient_noise/CODES/src/Correlate_single_spectrum/bin/Pack_Spectrums.exe param.dat
-   echo "$db_name made"
+   
+/data/dna/rmartin/Ambient_noise/CODES/src/Correlate_single_spectrum/bin/Pack_Spectrums.exe param.dat
+#echo "$db_name made"
 
-else
+#else
 
-    exit 1
-fi 
+#    exit 1
+#fi 

@@ -270,8 +270,8 @@ int main (int argc, char *argv[]) {
 				for (i=0; i<nPer; i++) {
 					snrThresshold = SNR_MIN_MID;
 					distanceThresshold = DIST_MIN_MID;
-					snrThresshold = 4;
-					distanceThresshold = 1.5;
+					snrThresshold = 10; //was 10, then 20
+					distanceThresshold = 1.5; // was 3
 					printf("%f %f %f %f %f %f %f\n",snrArray[i], snrThresshold, meta.dist, distanceThresshold, (ftanArray.ph[i] * (minPer+i*perInc)),tmpMinPer, tmpMaxPer);
 					
 					if (snrArray[i] >= snrThresshold && meta.dist >= (distanceThresshold * (ftanArray.ph[i] * (minPer+i*perInc))) && (minPer + i * perInc) >= tmpMinPer && (minPer+i*perInc) <= tmpMaxPer) {
