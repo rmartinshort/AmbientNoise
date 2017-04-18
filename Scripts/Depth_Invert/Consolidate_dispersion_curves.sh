@@ -18,7 +18,7 @@ uncertainty=0.2
 
 
 cwd=`pwd`
-datadir=/data/dna/rmartin/Ambient_noise/Alaska/ALL_DATA/COR/STACK/Dispersion_curves/
+datadir=/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/phase_data/
 
 if [ ! -d $datadir ]; then 
     echo "Directory $datadir does not exist!"
