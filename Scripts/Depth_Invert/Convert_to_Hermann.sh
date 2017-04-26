@@ -3,7 +3,8 @@
 #RMS 2017
 #This should be inside the dispersion curves directory
 
-datadir=/data/dna/rmartin/Ambient_noise/Alaska/ALL_DATA/COR/STACK/Dispersion_curves
+datadir=/data/dna/rmartin/Ambient_noise/Alaska/ALL_DATA/COR/STACK/Dispersion_curves_lr
+
 
 if [ ! -d $datadir ]; then 
     echo "Directory $datadir does not exist!"
@@ -15,7 +16,12 @@ cwd=`pwd`
 cd $datadir
 
 dbname=Alaska_ant_dispersion.db
-odir=../ForHermannInvert
+odir=../ForHermannInvert2
+
+if [ -d $odir ]; then
+    echo "Output dir already exists - deleting it now"
+    rm -rf $odir
+fi
 
 mkdir -p $odir
 
@@ -27,9 +33,8 @@ echo $odir >> params_herm.in
 
 
 #Compress the full directory ready for copying
-cd ../
-echo "Compressing grid point directory"
-tar -zcvf ForHermanInvert.tar.gz ForHermannInvert
-echo "Done!"
+#echo "Compressing grid point directory"
+#tar -zcvf ForHermanInvert.tar.gz $odir
+#echo "Done!"
 
 cd $cwd
