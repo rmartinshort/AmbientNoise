@@ -12,7 +12,7 @@ lagTimeinCors=5001
 minperiod=8
 maxperiod=40
 periodincrement=1
-outputdir=/data/dna/rmartin/Ambient_noise/Alaska/ALL_DATA/COR/STACK/Dispersion_curves_15_3
+outputdir=/data/dna/rmartin/Ambient_noise/Alaska/ALL_DATA/COR/STACK/Dispersion_curves_10_3
 
 #make output directory if it doesn't already exist
 if [ ! -d $outputdir ]; then

@@ -3,10 +3,6 @@
 #RMS Feb 2017
 #This file should be in Dispersion curves directory
 
-ProgID="SURF96"
-wavetype="R"
-mode="0"
-unknown="X"
 periodArray=( `seq 9 38` )
 
 #increment should match that used in the tomography setup script! 
@@ -29,11 +25,11 @@ fi
 
 cd $datadir
 
-if [ -f Alaska_ant_dispersion.db ]; then
-    rm Alaska_ant_dispersion.db
+if [ -f Alaska_ant_dispersion_ph.db ]; then
+    rm Alaska_ant_dispersion_ph.db
 fi 
 
-veltypes=( "ph" "gp" )
+veltypes=( "ph" )
 
 #loops though the assigned periods and appends to a database of the phase/group velocity values,
 #ready for the next step
@@ -47,8 +43,7 @@ for period in "${periodArray[@]}"; do
 	gmt grd2xyz tmp.grd | awk '{printf("%3.1f   %3.1f   %3.0f   %3.5f\n",$1,$2,'$period',$3)}' > tmp.${velocityType}
     done
 
-    awk '{print $4}' tmp.ph > tmp
-    paste tmp.gp tmp >> Alaska_ant_dispersion.db
+    paste tmp.ph >> Alaska_ant_dispersion_ph.db
     echo "Done with $period"
 done
 
