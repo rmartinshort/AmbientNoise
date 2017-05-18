@@ -14,8 +14,15 @@ fi
 cwd=`pwd`
 cd $datadir
 
-dbname=Alaska_ant_dispersion_0.2.db
-odir=../ForHermannInvert_0.2
+dbname=Alaska_ant_dispersion.db
+odir=../ForHermannInvert2
+
+if [ -d $odir ]; then
+    echo "Output dir already exists - deleting it now"
+    rm -rf $odir
+fi
+
+>>>>>>> a6e84b18331c9ff3b443a0675dcf57ea65f64e99
 mkdir -p $odir
 
 echo $dbname > params_herm.in
@@ -24,11 +31,6 @@ echo $odir >> params_herm.in
 
 /home/rmartinshort/Documents/Berkeley/Ambient_Noise/AmbientNoise/src/To_Hermann/bin/dispersion_db_to_hermann.exe params_herm.in
 
-
-#Compress the full directory for ease of copying -takes a long time!
-#cd ../
-#echo "Compressing grid point directory"
-#tar -zcvf ForHermanInvert.tar.gz ForHermannInvert
-#echo "Done!"
+echo "Done!"
 
 cd $cwd

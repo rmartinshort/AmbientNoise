@@ -7,7 +7,9 @@ ProgID="SURF96"
 wavetype="R"
 mode="0"
 unknown="X"
-periodArray=( `seq 8 36` )
+periodArray=( `seq 9 36` )
+
+#increment should match that used in the tomography setup script! 
 increment=0.5
 minlat=55.5
 maxlat=73.5
@@ -40,12 +42,13 @@ for period in "${periodArray[@]}"; do
     for velocityType in "${veltypes[@]}"; do
 
 	#echo $minlat $maxlat $minlon $maxlon
+	echo $velocityType
 	gmt surface data${period}s_${velocityType}.txt_${period}.1 -R${minlon}/${maxlon}/${minlat}/${maxlat} -I${increment}/${increment} -Gtmp.grd
 	gmt grd2xyz tmp.grd | awk '{printf("%3.1f   %3.1f   %3.0f   %3.5f\n",$1,$2,'$period',$3)}' > tmp.${velocityType}
     done
 
     awk '{print $4}' tmp.ph > tmp
-    paste tmp.ph tmp >> Alaska_ant_disperison.db
+    paste tmp.gp tmp >> Alaska_ant_dispersion.db
     echo "Done with $period"
 done
 

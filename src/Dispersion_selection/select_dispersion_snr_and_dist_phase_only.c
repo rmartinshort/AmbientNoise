@@ -279,8 +279,8 @@ int main (int argc, char *argv[]) {
 				        //snrThresshold = SNR_MIN_MID;
 		                        //distanceThresshold = DIST_MIN_MID;
 					//distance threshold in wavelength
-					snrThresshold = 10;
-					distanceThresshold = 1.5; // was 3
+					snrThresshold = 15;
+					distanceThresshold = 3.0; // was 3
 
 					printf("%f %f %f %f %f %f %f\n",snrArray[i], snrThresshold, meta.dist, distanceThresshold, (ftanArray.ph[i] * (minPer+i*perInc)),tmpMinPer, tmpMaxPer);
 					
