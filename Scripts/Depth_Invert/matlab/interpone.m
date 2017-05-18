@@ -2,8 +2,8 @@
 %interpolate 3d model
 %copy of Rob's script to interpolate a depth-vs ambient noise model
 
-inputfile='alaska.3d.mod';
-outputfile='alaska.3d.mod.interp_nosmooth';
+inputfile='/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/ForHermannInvert_0.1_v1/alaska.3d.mod';
+outputfile='/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/ForHermannInvert_0.1_v1/alaska.3d.mod.smooth';
 
 %open and read the file
 fid = fopen(inputfile,'r');
@@ -16,8 +16,8 @@ F.Method = 'nearest';
 F.ExtrapolationMethod = 'nearest';
 
 %set the model output geometry
-xvector = 200.1:0.1:206.5;
-yvector = 55.6:0.1:73.4;
+xvector = 188.7:.1:237.3;
+yvector = 55.7:0.1:73.3;
 zvector = 0:1:50;
 
 %generate the mesh
@@ -30,7 +30,7 @@ vel = F(xmesh,ymesh,zmesh);
 nsx = 3;
 nsy = 3;
 nsz = 3;
-%vel = smooth_nxmxk_matrix(vel,nsx,nsy,nsz);
+vel = smooth_nxmxk_matrix(vel,nsx,nsy,nsz);
 
 %write to file
 fid = fopen(outputfile,'w');

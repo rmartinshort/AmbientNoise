@@ -10,7 +10,7 @@
 #Requires the Computer Programs in Seismology code to be installed
 
 cwd=`pwd`
-datadir=/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/ForHermannInvert_0.5
+datadir=/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/ForHermannInvert_0.5_ebh
 
 if [ ! -d $datadir ]; then
 	echo 'The given directory $datadir does not exist'
@@ -22,7 +22,7 @@ cd $datadir
 for dir in disp*; do
 
 	echo $dir
-	
+
 	if [ ! -f $datadir/$dir/sobs.d ]; then
             echo 'No inversion parameter found in directory - assuming this is the first inversion'
             cp $cwd/surf_params/sobs.d $datadir/$dir
@@ -59,14 +59,14 @@ for dir in disp*; do
 	#####
 	#	constrain layers 35 - 44
 	#####
-		surf96 31 25 0.9
-		surf96 31 26 0.8
-		surf96 31 27 0.7
-		surf96 31 28 0.6
-		surf96 31 29 0.5
-		surf96 31 30 0.4
-		surf96 31 31 0.3
-		surf96 31 32 0.2
+		surf96 31 25 0.8
+		surf96 31 26 0.5
+		surf96 31 27 0.5
+		surf96 31 28 0.1
+		surf96 31 29 0.1
+		surf96 31 30 0.1
+		surf96 31 31 0.1
+		surf96 31 32 0.1
 		surf96 31 33 0.1
 		surf96 31 34 0.1
 		surf96 31 35 0.1
@@ -89,15 +89,15 @@ for dir in disp*; do
 	#####
 	#	also smooth the upper crust a bit
 	#####
-		surf96 31  1 0.8
-		surf96 31  2 0.8
-		surf96 31  3 0.8
-		surf96 31  4 0.8
-		surf96 31  5 0.8
-		surf96 31  6 0.8
-		surf96 31  7 0.8
-		surf96 31  8 0.8
-		surf96 31  9 0.8
+	#	surf96 31  1 0.8
+	#	surf96 31  2 0.8
+	#	surf96 31  3 0.8
+	#	surf96 31  4 0.8
+	#	surf96 31  5 0.8
+	#	surf96 31  6 0.8
+	#	surf96 31  7 0.8
+	#	surf96 31  8 0.8
+	#	surf96 31  9 0.8
 	#####
 	#	start the first inversion with a slightly higher damping
 	#	do avoid an overshoot in the first model estimate

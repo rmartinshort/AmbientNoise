@@ -8,7 +8,7 @@
 
 if [ -z "$1" ]; then
    #Path to directory containing the 1D velocity profiles
-   datadir=/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/ForHermannInvert_0.5_const
+   datadir=/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/ForHermannInvert_0.2_phonly
 else
    datadir=$1
 fi
@@ -48,7 +48,7 @@ maxlon = max(lons)
 maxlat = max(lats)
 minlon = min(lons)
 minlat = min(lats)
-print maxlon-0.5,maxlat-0.5,minlon+0.5,minlat+0.5
+print maxlon-0.2,maxlat-0.2,minlon+0.2,minlat+0.2
 END
 )
 
@@ -62,8 +62,8 @@ echo "minlon: $minlon"
 echo "maxlat: $maxlat"
 echo "minlat: $minlat"
 
-lats=( `seq -f %3.1f $minlat 0.5 $maxlat` )
-lons=( `seq -f %3.1f $minlon 0.5 $maxlon` )
+lats=( `seq -f %3.1f $minlat 0.2 $maxlat` )
+lons=( `seq -f %3.1f $minlon 0.2 $maxlon` )
 
 #Loop over files and append to database in from
 #lon lat depth Svel

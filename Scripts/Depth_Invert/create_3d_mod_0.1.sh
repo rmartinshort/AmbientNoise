@@ -48,7 +48,7 @@ maxlon = max(lons)
 maxlat = max(lats)
 minlon = min(lons)
 minlat = min(lats)
-print maxlon-0.5,maxlat-0.5,minlon+0.5,minlat+0.5
+print maxlon-0.1,maxlat-0.1,minlon+0.1,minlat+0.1
 END
 )
 
@@ -62,8 +62,8 @@ echo "minlon: $minlon"
 echo "maxlat: $maxlat"
 echo "minlat: $minlat"
 
-lats=( `seq -f %3.1f $minlat 0.5 $maxlat` )
-lons=( `seq -f %3.1f $minlon 0.5 $maxlon` )
+lats=( `seq -f %3.1f $minlat 0.1 $maxlat` )
+lons=( `seq -f %3.1f $minlon 0.1 $maxlon` )
 
 #Loop over files and append to database in from
 #lon lat depth Svel

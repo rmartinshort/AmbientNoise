@@ -8,7 +8,7 @@
 
 if [ -z "$1" ]; then
    #Path to directory containing the 1D velocity profiles
-   datadir=/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/ForHermannInvert_0.5_const
+   datadir=/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/ForHermannInvert_0.5_v3_nosmooth
 else
    datadir=$1
 fi

@@ -10,11 +10,28 @@
 #Requires the Computer Programs in Seismology code to be installed
 
 cwd=`pwd`
-datadir=/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/ForHermannInvert_0.5
+
+if [ -z "$1" ]; then 
+
+	echo "no command line argument supplied: using default (check)"
+	datadir=/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/ForHermannInvert_0.2_phonly
+
+
+else
+
+	datadir=$1
+
+fi
+
 
 if [ ! -d $datadir ]; then
 	echo 'The given directory $datadir does not exist'
 	exit 1
+
+else
+
+	echo $datadir
+
 fi
 
 cd $datadir
@@ -22,14 +39,11 @@ cd $datadir
 for dir in disp*; do
 
 	echo $dir
-	
-	if [ ! -f $datadir/$dir/sobs.d ]; then
-            echo 'No inversion parameter found in directory - assuming this is the first inversion'
-            cp $cwd/surf_params/sobs.d $datadir/$dir
-            cp $cwd/surf_params/start.mod $datadir/$dir
-        fi
 
-	cd $datadir/$dir
+	cp $cwd/surf_params/sobs.d $dir
+    cp $cwd/surf_params/ebh/adapt/start.mod $dir
+
+	cd $dir
 
 	#Run the inversion using surf96
 	####
@@ -60,16 +74,16 @@ for dir in disp*; do
 	#	constrain layers 35 - 44
 	#####
 		surf96 31 25 0.9
-		surf96 31 26 0.8
-		surf96 31 27 0.7
-		surf96 31 28 0.6
-		surf96 31 29 0.5
-		surf96 31 30 0.4
-		surf96 31 31 0.3
-		surf96 31 32 0.2
-		surf96 31 33 0.1
-		surf96 31 34 0.1
-		surf96 31 35 0.1
+		surf96 31 26 0.9
+		surf96 31 27 0.9
+		surf96 31 28 0.9
+		surf96 31 29 0.9
+		surf96 31 30 0.8
+		surf96 31 31 0.7
+		surf96 31 32 0.6
+		surf96 31 33 0.5
+		surf96 31 34 0.4
+		surf96 31 35 0.3
 
 		for j in 36 37 38 39 40 41 42 43 44 45 46 47 48 49 \
 		50 51 52 53 54 55 56 57 58 59 \
@@ -77,14 +91,14 @@ for dir in disp*; do
 		70 71 72 73 74 75 76 77 78 79 \
 		80 81 82 83 84 85 86 87 88 89
 		do
-			surf96 31 $j 0.1
+			surf96 31 $j 0.2
 		done
 
 		for j in 65 66 67 68 69 \
 	        70 71 72 73 74 75 76 77 78 79 \
 	        80 81 82 83 84 85 86 87 88 89
 	        do
-	                surf96 31 $j 0.0
+	                surf96 31 $j 0.1
 	        done
 	#####
 	#	also smooth the upper crust a bit
@@ -107,7 +121,7 @@ for dir in disp*; do
 	#####
 	#	do 28 more inversions
 	#####
-	surf96 32 2  #was 0.5
+	surf96 32 0.5  #was 0.5
 	time surf96 37 28 1 2 6
 
 	#####
@@ -118,22 +132,24 @@ for dir in disp*; do
 	#####
 	#	plot up the dispersion
 	#####
-	srfphv96
+	#srfphv96
 	#####
 	#	plot up the resolution kernel
 	#####
-	srfphr96
+	#srfphr96
 
 	#surf96 45 > 45.out #show velocity weights
-	surf96 47 > 47.out #show Q weights
+	#surf96 47 > 47.out #show Q weights
 
 	#plot the model evolution towards final value
-	shwmod96 -ZMAX 100 -K -1 -LEG start.mod tmpmod96.??? end.mod
+	#shwmod96 -ZMAX 100 -K -1 -LEG start.mod tmpmod96.??? end.mod
 
 	#convert to ps and plot results
-	plotnps -K < SRFPHR96.PLT > reskernel.ps
-	plotnps -K < SRFPHV96.PLT > dispersion.ps
-	plotnps -K < SHWMOD96.PLT > med_evo.ps
+	#plotnps -K < SRFPHR96.PLT > reskernel.ps
+	#plotnps -K < SRFPHV96.PLT > dispersion.ps
+	#plotnps -K < SHWMOD96.PLT > med_evo.ps
+
+	cd $datadir
 
 done
 

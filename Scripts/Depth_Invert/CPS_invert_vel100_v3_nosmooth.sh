@@ -10,11 +10,28 @@
 #Requires the Computer Programs in Seismology code to be installed
 
 cwd=`pwd`
-datadir=/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/ForHermannInvert_0.5
+
+if [ -z "$1" ]; then 
+
+	echo "no command line argument supplied: using default (check)"
+	datadir=/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/ForHermannInvert_0.5_v3_nosmooth
+
+
+else
+
+	datadir=$1
+
+fi
+
 
 if [ ! -d $datadir ]; then
 	echo 'The given directory $datadir does not exist'
 	exit 1
+
+else
+
+	echo $datadir
+
 fi
 
 cd $datadir
@@ -25,11 +42,11 @@ for dir in disp*; do
 	
 	if [ ! -f $datadir/$dir/sobs.d ]; then
             echo 'No inversion parameter found in directory - assuming this is the first inversion'
-            cp $cwd/surf_params/sobs.d $datadir/$dir
-            cp $cwd/surf_params/start.mod $datadir/$dir
+            cp $cwd/surf_params/sobs.d $dir
+            cp $cwd/surf_params/ebh/adapt/start.mod $dir
         fi
 
-	cd $datadir/$dir
+	cd $dir
 
 	#Run the inversion using surf96
 	####
@@ -89,15 +106,15 @@ for dir in disp*; do
 	#####
 	#	also smooth the upper crust a bit
 	#####
-		surf96 31  1 0.8
-		surf96 31  2 0.8
-		surf96 31  3 0.8
-		surf96 31  4 0.8
-		surf96 31  5 0.8
-		surf96 31  6 0.8
-		surf96 31  7 0.8
-		surf96 31  8 0.8
-		surf96 31  9 0.8
+	#	surf96 31  1 0.8
+	#	surf96 31  2 0.8
+	#	surf96 31  3 0.8
+	#	surf96 31  4 0.8
+	#	surf96 31  5 0.8
+	#	surf96 31  6 0.8
+	#	surf96 31  7 0.8
+	#	surf96 31  8 0.8
+	#	surf96 31  9 0.8
 	#####
 	#	start the first inversion with a slightly higher damping
 	#	do avoid an overshoot in the first model estimate
@@ -107,7 +124,7 @@ for dir in disp*; do
 	#####
 	#	do 28 more inversions
 	#####
-	surf96 32 2  #was 0.5
+	surf96 32 0.5  #was 0.5
 	time surf96 37 28 1 2 6
 
 	#####
@@ -118,22 +135,23 @@ for dir in disp*; do
 	#####
 	#	plot up the dispersion
 	#####
-	srfphv96
+	#srfphv96
 	#####
 	#	plot up the resolution kernel
 	#####
-	srfphr96
+	#srfphr96
 
 	#surf96 45 > 45.out #show velocity weights
-	surf96 47 > 47.out #show Q weights
+	#surf96 47 > 47.out #show Q weights
 
 	#plot the model evolution towards final value
-	shwmod96 -ZMAX 100 -K -1 -LEG start.mod tmpmod96.??? end.mod
+	#shwmod96 -ZMAX 100 -K -1 -LEG start.mod tmpmod96.??? end.mod
 
 	#convert to ps and plot results
-	plotnps -K < SRFPHR96.PLT > reskernel.ps
-	plotnps -K < SRFPHV96.PLT > dispersion.ps
-	plotnps -K < SHWMOD96.PLT > med_evo.ps
+	#plotnps -K < SRFPHR96.PLT > reskernel.ps
+	#plotnps -K < SRFPHV96.PLT > dispersion.ps
+	#plotnps -K < SHWMOD96.PLT > med_evo.ps
+	cd $datadir
 
 done
 

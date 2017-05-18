@@ -10,11 +10,28 @@
 #Requires the Computer Programs in Seismology code to be installed
 
 cwd=`pwd`
-datadir=/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/ForHermannInvert_0.5
+
+if [ -z "$1" ]; then 
+
+	echo "no command line argument supplied: using default (check)"
+	datadir=/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/ForHermannInvert_0.5_v1
+
+
+else
+
+	datadir=$1
+
+fi
+
 
 if [ ! -d $datadir ]; then
 	echo 'The given directory $datadir does not exist'
 	exit 1
+
+else
+
+	echo $datadir
+
 fi
 
 cd $datadir
@@ -26,7 +43,7 @@ for dir in disp*; do
 	if [ ! -f $datadir/$dir/sobs.d ]; then
             echo 'No inversion parameter found in directory - assuming this is the first inversion'
             cp $cwd/surf_params/sobs.d $datadir/$dir
-            cp $cwd/surf_params/start.mod $datadir/$dir
+            cp $cwd/surf_params/basic/start.mod $datadir/$dir
         fi
 
 	cd $datadir/$dir
@@ -107,7 +124,7 @@ for dir in disp*; do
 	#####
 	#	do 28 more inversions
 	#####
-	surf96 32 2  #was 0.5
+	surf96 32 0.5  #was 0.5
 	time surf96 37 28 1 2 6
 
 	#####
