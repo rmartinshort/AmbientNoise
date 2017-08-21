@@ -94,7 +94,7 @@ nprpv = -1;
   } else {
 
 
-  fprintf(stderr,"Starting FTAN LOOP");
+  fprintf(stderr,"\nStarting FTAN LOOP\n");
 
   while(fgets(buf,200,inv) != NULL) {
          if(nprpv == -1) { nprpv++; continue; }

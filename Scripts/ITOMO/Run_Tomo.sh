@@ -42,7 +42,7 @@ fi
 
 
 #Tomography code run
-itomo $data_file $data_file $period << EOF
+/data/dna/rmartin/Ambient_noise/CODES/src/ITOMO/bin/itomo.exe $data_file $data_file $period << EOF
 me
 4
 5

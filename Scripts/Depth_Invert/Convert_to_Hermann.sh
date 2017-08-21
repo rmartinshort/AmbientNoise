@@ -4,6 +4,7 @@
 #This should be inside the dispersion curves directory
 
 datadir=/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/phase_data/
+datadir=/data/dna/rmartin/Ambient_noise/Alaska/ALL_DATA/COR/STACK/Dispersion_curves_10_3/ambient_surface_obs/
 
 if [ ! -d $datadir ]; then
     echo "Directory $datadir does not exist!"
@@ -14,8 +15,8 @@ fi
 cwd=`pwd`
 cd $datadir
 
-dbname=Alaska_ant_dispersion.db
-odir=../ForHermannInvert2
+dbname=Alaska_ALL.db
+odir=../../hermtest
 
 if [ -d $odir ]; then
     echo "Output dir already exists - deleting it now"

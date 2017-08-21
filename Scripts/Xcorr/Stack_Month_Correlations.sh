@@ -9,7 +9,7 @@
 #and make the parameter file according to the insructions below
 
 basedir=`pwd`
-datadir=/data/dna/rmartin/Ambient_noise/Alaska/ALL_DATA/COR
+datadir=/data/dna/rmartin/Ambient_noise/Alaska/LATEST/COR/
 
 if [ ! -d $datadir ]; then 
     echo "input data directory does not exist"

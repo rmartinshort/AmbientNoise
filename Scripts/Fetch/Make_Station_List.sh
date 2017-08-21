@@ -8,8 +8,8 @@
 #This file, station.list, gets used in various other scripts during the ambient noise processing
 #workflow
 
-datadir="/data/dna/rmartin/Ambient_noise/Alaska/AK_ONLY"
-datadir="/data/dna/rmartin/Ambient_noise/Alaska/ALL_DATA"
+datadir="/data/dna/rmartin/Ambient_noise/Alaska/LATEST"
+#datadir="/data/dna/rmartin/Ambient_noise/Alaska/ALL_DATA"
 
 currendir=`pwd`
 

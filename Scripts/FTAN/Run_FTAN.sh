@@ -22,7 +22,8 @@ per_max=40	#    maximum period to try to measure
 #########################
 
 currentdir=`pwd`
-datadir=/data/dna/rmartin/Ambient_noise/Alaska/ALL_DATA/COR/STACK/SYM
+datadir=/data/dna/rmartin/Ambient_noise/Alaska/LATEST/COR/STACK/SYM
+station_lst_file=/data/dna/rmartin/Ambient_noise/Alaska/LATEST/station.list
 
 if [ ! -d $datadir ]; then
     echo "Selected directory $datadir does not exit!"
@@ -31,18 +32,7 @@ fi
 
 cd $datadir
 
-if [ "$#" == 2 ]; then
-	station_lst_file=$1
-	indir=$2
-else
-	echo "Please input the station list (list of stations in second column)"
-	station_lst_file=`return_string `
-	echo "Please input the directory with symmetric correlations"
-	indir=`return_string `
-fi
-
-cp $station_lst_file $indir
-cd $indir
+cp $station_lst_file $datadir
 
 #stations=( `cat ${station_lst_file} | awk '{print $2}'` )
 #echo $stations 

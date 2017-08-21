@@ -11,13 +11,14 @@
 #to download from
 
 #Enter the directory where you want to build the data structure here
-datadir=/data/dna/rmartin/Ambient_noise/Alaska/ALL_DATA
+datadir=/data/dna/rmartin/Ambient_noise/Alaska/LATEST
 
 cwd=`pwd`
 
 if [ ! -d $datadir ]; then
     echo "The directory $datadir does not exist!"
-    exit 1
+    mkdir -p $datadir
+    echo "Made datadir"
 fi
 
 cd $datadir
