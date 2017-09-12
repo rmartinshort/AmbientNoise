@@ -4,10 +4,16 @@
 BIN  = bin
 CFLAGS = -Wall -g -O3 -lm
 CC = gcc
-OBJS = dispersion_db_to_hermann_input.c
+OBJS1 = dispersion_db_to_hermann_input.c
+OBJS2 = dispersion_db_to_hermann_input_phonly.c
+OBJS3 = dispersion_db_to_hermann_input_phonlyv1.c
  
 all:
-	$(CC) $(OBJS) $(CFLAGS) -o $(BIN)/dispersion_db_to_hermann.exe
+	$(CC) $(OBJS1) $(CFLAGS) -o $(BIN)/dispersion_db_to_hermann.exe
+	$(CC) $(OBJS3) $(CFLAGS) -o $(BIN)/dispersion_db_to_hermann_phv.exe
+
+#$(CC) $(OBJS3) $(CFLAGS) -o $(BIN)/dispersion_db_to_hermann_phv1.exe
+
 
 clean:
 	rm -f $(BIN)/*

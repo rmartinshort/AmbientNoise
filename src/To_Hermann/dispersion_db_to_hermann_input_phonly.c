@@ -24,8 +24,6 @@ void mkdir_rp(char *dirname);
 int compute_nodes(float max, float min, float inc);
 
 
-
-
 //makes a directory and parents if necessary
 void mkdir_rp(char *dirname) {
     char str[500];
@@ -56,7 +54,7 @@ int main(int argc, char *argv[]) {
     double prevPer, prevLong, prevLat;
     double MinLongitude, MinLatitude, MaxLongitude, MaxLatitude, MinPeriod, MaxPeriod;
     double IncPeriod, IncLongitude, IncLatitude;
-    double *groupvel, *phasevel;
+    double *phasevel;
     char buff[300], paramFileName[300], inputFileName[300], OutputBaseDirectory[300];
     char outputTmpDir[600], outputFileName[900];
     FILE *paramFile, *inputFile, *outputFile;
@@ -99,7 +97,7 @@ int main(int argc, char *argv[]) {
         // avoids the header line
         if (nbins != -1) {
             //gets info from the data file
-            sscanf(buff,"%lf %lf %lf %lf %lf",&tmpLon, &tmpLat, &tmpPer, &tmpGp, &tmpPh);
+            sscanf(buff,"%lf %lf %lf %lf",&tmpLon, &tmpLat, &tmpPer, &tmpPh);
             
             if (nbins == 0) {
                 //set the initial values based on the first data line
@@ -162,19 +160,14 @@ int main(int argc, char *argv[]) {
     nper = compute_nodes(MaxPeriod, MinPeriod, IncPeriod);
     
     // prepare memory
-    groupvel = malloc(sizeof(groupvel) * nlong * nlat * nper);
     phasevel = malloc(sizeof(phasevel) * nlong * nlat * nper);
     
-    //re-read the input file, but in the proper order
-    //for (ilon = 0; ilon<nlong; ilon++) {
-    //    for (ilat=nlat-1; ilat>=0; ilat--) {
-    //        for (iper=0; iper<nper; iper++) {
     for (iper=0; iper<nper; iper++) {
         for (ilat=nlat-1; ilat>=0; ilat--) {
             for (ilon=0; ilon<nlong; ilon++) {
                 l = ilon + nlong * (ilat + nlat * iper);
                 fgets(buff,300,inputFile);
-                sscanf(buff,"%lf %lf %lf %lf %lf\n",&tmpLon, &tmpLat, &tmpPer, &groupvel[l], &phasevel[l]);
+                sscanf(buff,"%lf %lf %lf %lf\n",&tmpLon, &tmpLat, &tmpPer, &phasevel[l]);
             }
         }
     }
@@ -191,11 +184,6 @@ int main(int argc, char *argv[]) {
             sprintf(outputFileName,"%s/nnall.dsp",outputTmpDir);
             outputFile = fopen(outputFileName,"w");
             
-            //writes the group velocities
-            for (iper=0; iper<nper; iper++) {
-                l = ilon + nlong * (ilat + nlat * iper);
-                fprintf(outputFile,"SURF96 R U X 0 %f %f 0.2 20\n",MinPeriod + iper * IncPeriod, groupvel[l]);
-            }
             //writes the phase velocities
             for (iper=0; iper<nper; iper++) {
                 l = ilon + nlong * (ilat + nlat * iper);
@@ -206,7 +194,6 @@ int main(int argc, char *argv[]) {
     }
     
     
-    free(groupvel);
     free(phasevel);
     
     return 0;

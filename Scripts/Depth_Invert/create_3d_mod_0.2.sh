@@ -8,7 +8,7 @@
 
 if [ -z "$1" ]; then
    #Path to directory containing the 1D velocity profiles
-   datadir=/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/ForHermannInvert_0.2_phonly
+   datadir=/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/ForHermannInvert_ALL_phonly_1_100
 else
    datadir=$1
 fi
@@ -19,6 +19,9 @@ fi
 
 cwd=`pwd`
 cd $datadir
+
+#maximum depth in model to extract
+mdepth=200
 
 #Remove a 3D model file if it already exists
 if [ -f alaska.3d.mod ]; then
@@ -85,5 +88,7 @@ for la in "${lats[@]}"; do
 done
 
 #Remove depths beyond the resolution of the model (saves space)
-awk '{if ($3 <= 60) print $0}' alaska.3d.mod > alaska.3d.clipped.mod
-mv alaska.3d.clipped.mod alaska.3d.mod
+#awk '{if ($3 <= $mdepth) print $0}' alaska.3d.mod > alaska.3d.clipped.mod
+
+#here, 200 is the maximum depth to extract
+awk -v x=200 '$3 <= x' alaska.3d.mod > alaska.3d.clipped.mod 
