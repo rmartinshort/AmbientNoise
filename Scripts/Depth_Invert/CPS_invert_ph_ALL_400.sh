@@ -94,10 +94,10 @@ for dir in disp*; do
         surf96 37 2 1 2 6
 
         #####
-        #do 28 more inversions
+        #do 50 more iterations
         #####
-        surf96 32 0.5  #was 0.5,0.8,0.1
-        time surf96 37 28 1 2 6
+        surf96 32 1.2  #was 0.5,0.8,0.1
+        time surf96 37 50 1 2 6
 
         #####
         #get the current model

@@ -1,5 +1,7 @@
 % dispersion_db_to_hermmann_input.m
 
+% From Rob Porritt
+
 % Code to convert from a dispersion database (usarray_ant_dispersion.db) in
 % the format longitude, latitude, period, groupvel, phasevel
 % to the format needed in the Bob Hermmann's joint96 program. 
@@ -8,13 +10,14 @@
 % source the location of the station and the station name.
 % I should probably use the c code directly for a surf only inversion
 
+datadir = '/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/Station_grid/Alaska_stations_500';
+dispersionDataBaseFileName = '/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/phase_data/500/Alaska_ALL.db';
+cd(sprintf('%s',datadir));
 
 % File IO and read.
+% This file is generated using the script 'get-stations.py'
 stationInfoFileName = 'Alaska_stations.txt';
-dispersionDataBaseFileName = 'Alaska_ALL.db';
-datadirname='Alaska_stations_surf';
 
-mkdir(sprintf('%s',datadirname));
 
 fid = fopen(stationInfoFileName,'r');
 StationInfoCell = textscan(fid,'%f %f %s %s %d');
@@ -55,7 +58,6 @@ for idx=1:length(StationInfoCell{1})
     end
     
     fclose(fid);
-    %Move the folder that we've just made to the specified dir
-    movefile(sprintf('%s',stmn{1}),datadirname);
+    
 end
 disp('Done')

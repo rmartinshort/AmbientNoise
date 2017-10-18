@@ -3,7 +3,7 @@
 #RMS 2017
 #This should be inside the dispersion curves directory
 
-datadir=/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/phase_data/400
+datadir=/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/phase_data/750
 
 if [ ! -d $datadir ]; then
     echo "Directory $datadir does not exist!"
@@ -15,7 +15,7 @@ cwd=`pwd`
 cd $datadir
 
 dbname=Alaska_ALL.db
-odir=../../ForHermannInvert_ALL_phonly_400_meddamp
+odir=../../ForHermannInvert_ALL_phonly_750_sep17
 
 if [ -d $odir ]; then
 
