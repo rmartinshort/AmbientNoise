@@ -10,8 +10,15 @@ import sys
 
 def main():
 
-       #This is where the files will be located
-       datadir = "/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/Station_grid/Alaska_stations_500"
+       try:
+          datadir = sys.argv[1]
+       except:
+          print "datadir not provided at command line. Using defaults (hard coded)"
+
+          #This is where the files will be located
+          datadir = "/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/Station_grid/Alaska_stations_500"
+          datadir = "/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/Station_grid/Alaska_stations_plus_ghost_500_AK_TA"
+
        cwd = os.getcwd()
 
        if not os.path.exists(datadir):

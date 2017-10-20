@@ -15,13 +15,14 @@ import numpy as np
 def main():
 
     parser = argparse.ArgumentParser()
-    parser.add_argument('-addocean',action='store_true',dest='ghoststations',help="Use this parameter to construct a grid over the ocean region and extract\
+    parser.add_argument('-addocean',action='store_true',dest='ghoststations',default=False,help="Use this parameter to construct a grid over the ocean region and extract\
     surface wave velocities there. Requires specification of a topo file")
     results = parser.parse_args()
 
     #This is where the file will be located
     #datadir = "/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/ForHermannInvert_ALL_phonly_500_JOINT_oct17/1.0_only"
-    datadir = "/home/rmartinshort/Documents/Berkeley/funclab/RF_TA_2017/RAYP_BAZ_STACK/TA_joint"
+    #datadir = "/home/rmartinshort/Documents/Berkeley/funclab/RF_TA_2017/RAYP_BAZ_STACK/TA_joint"
+    datadir = "/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/Station_grid/Alaska_stations_plus_ghost_500_AK_TA"
     cwd = os.getcwd()
 
     if not os.path.exists(datadir):
@@ -39,10 +40,10 @@ def main():
     client = fdsnClient("IRIS")
 
     inv = client.get_stations(starttime=op.UTCDateTime(starttime),endtime=op.UTCDateTime(endtime)\
-    ,network='TA',level="channel",loc="*",channel="BHZ",minlatitude=latmin,maxlatitude=latmax,\
+    ,network='AK,TA',level="channel",loc="*",channel="BHZ",minlatitude=latmin,maxlatitude=latmax,\
     minlongitude=lonmin,maxlongitude=lonmax)
 
-    outfile = open('Alaska_stations_coordinatesTA.txt','w')
+    outfile = open('Alaska_stations_coordinates.txt','w')
 
     for network in inv:
         for station in network:
@@ -53,7 +54,11 @@ def main():
 
     outfile.close()
 
+    if results.ghoststations == True:
+        generate_ghost_stations()
+
     os.chdir(cwd)
+
 
 
 def generate_ghost_stations():
@@ -70,13 +75,14 @@ def generate_ghost_stations():
     lonmax = 224
     latmin = 58
     latmax = 68
+    inc = 1
 
     #open a file to write - will then call grdtrack to sample
     outfile = open('dpoints.dat','w')
 
     #generate grid
-    x = np.arange(lonmin-0.5,lonmax+0.5,0.5)
-    y = np.arange(latmin-0.5,latmax+0.5,0.5)
+    x = np.arange(lonmin-inc,lonmax+inc,inc)
+    y = np.arange(latmin-inc,latmax+inc,inc)
 
     #loop through coordinates
     for lon in x:
@@ -88,7 +94,6 @@ def generate_ghost_stations():
 
     #do the interpolation
     os.system('gmt grdtrack dpoints.dat -G%s > dps.dat' %topofile)
-    os.system('rm dps.dat')
 
     #Write points that are offshore to a new file
     infile = open('dps.dat','r')
@@ -98,15 +103,14 @@ def generate_ghost_stations():
     ghostID=1
     for line in lines:
         vals = line.split()
-        lon = vals[0]
-        lat = vals[1]
+        lon = float(vals[0])
+        lat = float(vals[1])
         h = float(vals[2])
 
-        if h < -50:
+        if h < -10:
             stationname = "ghost_%i" %ghostID
             outfile.write('%g %g NA %s 1\n' %(lon,lat,stationname))
-
-        ghostID+=1
+            ghostID+=1
 
     infile.close()
     outfile.close()
@@ -117,6 +121,6 @@ def generate_ghost_stations():
 
 if __name__ == "__main__":
 
-    generate_ghost_stations()
+    #generate_ghost_stations()
 
-    #main()
+    main()

@@ -32,7 +32,7 @@ else
 fi
 cd $datadir
 
-stations_fname=Alaska_stations.txt
+stations_fname=Alaska_station_names.txt
 
 if [ ! -f $stations_fname ]; then
    echo "Required file Alaska_stations.txt not found"
@@ -49,6 +49,8 @@ while read line ; do
 	cp $cwd/surf_params/ebh/adapt2/start_ALL.mod $dir/start.mod
 
 	cd $dir
+
+    touch rftn.lst
 
 	#Generate the list of receiver functions file
 	ls *.SAC > rftn.lst
@@ -159,7 +161,8 @@ while read line ; do
 		#	do 50 more inversions
 		#####
 		joint96 32 0.5 #was 0.5
-		time joint96 37 20 1 2 6
+
+		time joint96 37 30 1 2 6
 
 		#####
 		#	get the current model
