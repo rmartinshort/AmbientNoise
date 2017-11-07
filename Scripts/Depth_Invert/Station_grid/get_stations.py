@@ -21,8 +21,10 @@ def main():
 
     #This is where the file will be located
     #datadir = "/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/ForHermannInvert_ALL_phonly_500_JOINT_oct17/1.0_only"
-    #datadir = "/home/rmartinshort/Documents/Berkeley/funclab/RF_TA_2017/RAYP_BAZ_STACK/TA_joint"
-    datadir = "/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/Station_grid/Alaska_stations_plus_ghost_500_AK_TA"
+    #datadir = "/home/rmartinshort/Documents/Berkeley/funclab/RF_TA_2017/RAYP_BAZ_STACK/Joint_RF"
+    datadir = "/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/Station_grid/Alaska_stations_plus_ghost_400_AK_TA"
+    datadir = "/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/Station_grid/Alaska_stations_plus_ghost_400_RFJ_2014_2.5"
+    datadir = "/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/Station_grid/Alaska_stations_plus_ghost_Miller_RF_2.5"
     cwd = os.getcwd()
 
     if not os.path.exists(datadir):
@@ -31,19 +33,20 @@ def main():
 
     os.chdir(datadir)
 
-    starttime = "2017-01-01"
-    endtime = "2017-08-01"
+    starttime = "2017-04-02"
+    endtime = "2017-10-01"
     latmin = 48
     latmax = 78
     lonmin = -177
     lonmax = -113
     client = fdsnClient("IRIS")
 
-    inv = client.get_stations(starttime=op.UTCDateTime(starttime),endtime=op.UTCDateTime(endtime)\
-    ,network='AK,TA',level="channel",loc="*",channel="BHZ",minlatitude=latmin,maxlatitude=latmax,\
+    #Get the stations recording between start and endtime, which were installed after the start time
+    inv = client.get_stations(startafter=op.UTCDateTime(starttime),starttime=op.UTCDateTime(starttime),endtime=op.UTCDateTime(endtime)\
+    ,network='TA',level="channel",loc="*",channel="BHZ",minlatitude=latmin,maxlatitude=latmax,\
     minlongitude=lonmin,maxlongitude=lonmax)
 
-    outfile = open('Alaska_stations_coordinates.txt','w')
+    outfile = open('Alaska_stations_TA_april2017.txt','w')
 
     for network in inv:
         for station in network:

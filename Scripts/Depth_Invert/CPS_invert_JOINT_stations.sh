@@ -35,7 +35,7 @@ cd $datadir
 stations_fname=Alaska_station_names.txt
 
 if [ ! -f $stations_fname ]; then
-   echo "Required file Alaska_stations.txt not found"
+   echo "Required file Alaska_station_names.txt not found"
    cd $cwd
    exit 1
 fi
@@ -94,33 +94,37 @@ while read line ; do
 	#####
 
 	#####
-	#	constrain layers 36 - 53
+	#	constrain layers 36 - 60
 	#####
-    joint96 31 36 0.9
-    joint96 31 37 0.9
-    joint96 31 38 0.8
-    joint96 31 39 0.8
-    joint96 31 40 0.7
-    joint96 31 41 0.7
-    joint96 31 42 0.6
-    joint96 31 43 0.6
-    joint96 31 44 0.5
-    joint96 31 45 0.5
-    joint96 31 46 0.4
-    joint96 31 47 0.4
-    joint96 31 48 0.3
-    joint96 31 49 0.3
-    joint96 31 50 0.2
-    joint96 31 51 0.2
-    joint96 31 52 0.1
-    joint96 31 53 0.1
-    joint96 31 54 0.1
-    joint96 31 55 0.1
-    joint96 31 56 0.1
-		# #
+	# #
+                surf96 31 36 0.9
+                surf96 31 37 0.9
+                surf96 31 38 0.8
+                surf96 31 39 0.8
+                surf96 31 40 0.7
+                surf96 31 41 0.7
+                surf96 31 42 0.6
+                surf96 31 43 0.6
+                surf96 31 44 0.6
+                surf96 31 45 0.6
+                surf96 31 46 0.5
+                surf96 31 47 0.5
+                surf96 31 48 0.5
+                surf96 31 49 0.5
+                surf96 31 50 0.4
+                surf96 31 51 0.4
+                surf96 31 52 0.4
+                surf96 31 53 0.4
+                surf96 31 54 0.3
+                surf96 31 55 0.3
+                surf96 31 56 0.3 
+                surf96 31 57 0.2 
+                surf96 31 58 0.2 
+                surf96 31 59 0.2
+                surf96 31 60 0.1
 		# #
 		# # #Set weightings of all greater depths to zero
-		for j in $(seq 57 82)
+		for j in $(seq 61 82)
 
 			do
 			  joint96 31 $j 0.0
@@ -129,18 +133,18 @@ while read line ; do
                 #
 		#
 		# #	also smooth the crust a bit
-		joint96 31  1 0.7
-		joint96 31  2 0.7
-		joint96 31  3 0.8
-		joint96 31  4 0.8
-		joint96 31  5 0.8
-		joint96 31  6 0.8
-		joint96 31  7 0.8
-		joint96 31  8 0.8
-		joint96 31  9 0.8
+		joint96 31  1 0.5
+		joint96 31  2 0.5
+		joint96 31  3 0.5
+		joint96 31  4 0.6
+		joint96 31  5 0.6
+		joint96 31  6 0.6
+		joint96 31  7 0.7
+		joint96 31  8 0.7
+		joint96 31  9 0.7
         joint96 31 10 0.8
         joint96 31 11 0.8
-        joint96 31 12 0.9
+        joint96 31 12 0.8
         joint96 31 13 0.9
         joint96 31 14 0.9
         joint96 31 15 0.9
@@ -150,7 +154,7 @@ while read line ; do
 		#####
 		#	set the p factor. The larger the value of p, the more the surface waves influence the problem
 		#####
-		joint96 43 0.3
+		joint96 43 0.25
 		#####
 		#	start the first inversion with a slightly higher damping
 		#	do avoid an overshoot in the first model estimate
@@ -160,7 +164,7 @@ while read line ; do
 		#####
 		#	do 50 more inversions
 		#####
-		joint96 32 0.5 #was 0.5
+		joint96 32 1.2 #was 0.5
 
 		time joint96 37 30 1 2 6
 
