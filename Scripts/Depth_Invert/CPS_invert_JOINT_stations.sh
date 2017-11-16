@@ -32,7 +32,8 @@ else
 fi
 cd $datadir
 
-stations_fname=Alaska_station_names.txt
+#List of the names of the station directories that will be used in the inversion 
+stations_fname=live_station_names.txt
 
 if [ ! -f $stations_fname ]; then
    echo "Required file Alaska_station_names.txt not found"
@@ -70,7 +71,7 @@ while read line ; do
 	#	because of the longer width of the pulse ventered at zero lag
 	#####
 	joint96 33 -5
-	joint96 34 20
+	joint96 34 12
 	#####
 	#	lower floor on rftn
 	#####
@@ -97,31 +98,31 @@ while read line ; do
 	#	constrain layers 36 - 60
 	#####
 	# #
-                surf96 31 36 0.9
-                surf96 31 37 0.9
-                surf96 31 38 0.8
-                surf96 31 39 0.8
-                surf96 31 40 0.7
-                surf96 31 41 0.7
-                surf96 31 42 0.6
-                surf96 31 43 0.6
-                surf96 31 44 0.6
-                surf96 31 45 0.6
-                surf96 31 46 0.5
-                surf96 31 47 0.5
-                surf96 31 48 0.5
-                surf96 31 49 0.5
-                surf96 31 50 0.4
-                surf96 31 51 0.4
-                surf96 31 52 0.4
-                surf96 31 53 0.4
-                surf96 31 54 0.3
-                surf96 31 55 0.3
-                surf96 31 56 0.3 
-                surf96 31 57 0.2 
-                surf96 31 58 0.2 
-                surf96 31 59 0.2
-                surf96 31 60 0.1
+                joint96 31 36 0.9
+                joint96 31 37 0.9
+                joint96 31 38 0.8
+                joint96 31 39 0.8
+                joint96 31 40 0.7
+                joint96 31 41 0.7
+                joint96 31 42 0.6
+                joint96 31 43 0.6
+                joint96 31 44 0.6
+                joint96 31 45 0.6
+                joint96 31 46 0.5
+                joint96 31 47 0.5
+                joint96 31 48 0.5
+                joint96 31 49 0.5
+                joint96 31 50 0.4
+                joint96 31 51 0.4
+                joint96 31 52 0.4
+                joint96 31 53 0.4
+                joint96 31 54 0.3
+                joint96 31 55 0.3
+                joint96 31 56 0.3 
+                joint96 31 57 0.2 
+                joint96 31 58 0.2 
+                joint96 31 59 0.2
+                joint96 31 60 0.1
 		# #
 		# # #Set weightings of all greater depths to zero
 		for j in $(seq 61 82)
@@ -164,7 +165,7 @@ while read line ; do
 		#####
 		#	do 50 more inversions
 		#####
-		joint96 32 1.2 #was 0.5
+		joint96 32 2.0 #was 0.5
 
 		time joint96 37 30 1 2 6
 

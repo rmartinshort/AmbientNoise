@@ -17,6 +17,7 @@ def main():
        #datadir = "/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/Station_grid/Alaska_stations_plus_ghost_500_RFJ_both"
        datadir = "/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/Station_grid/Alaska_stations_plus_ghost_400_RFJ_2014_2.5"
        datadir = "/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/Station_grid/Alaska_stations_plus_ghost_Miller_RF_2.5"
+       datadir = "/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/Station_grid/Alaska_stations_plus_ghost_RF_1999_2017_ALL"
        cwd = os.getcwd()
 
        if not os.path.exists(datadir):
@@ -25,7 +26,7 @@ def main():
 
        os.chdir(datadir)
 
-       stationsfile = "Alaska_stations.txt"
+       stationsfile = "live_stations.txt"
 
        #Load the station database and loop through, find the station and append to the database
        station_db = pd.read_csv(stationsfile,sep=' ',names=['Lon','Lat','tmp','Code','tmp2'])

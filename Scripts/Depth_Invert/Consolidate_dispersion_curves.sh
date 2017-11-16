@@ -15,9 +15,6 @@ minlat=55.5
 maxlat=73.5
 minlon=188.5
 maxlon=237.5
-snr=10
-uncertainty=0.2
-
 
 cwd=`pwd`
 datadir=/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/phase_data/

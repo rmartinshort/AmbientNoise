@@ -12,11 +12,10 @@
 % the velocity on the desired spatial basis. Some slight smoothing is added
 % to make the visuals cleaner
 
-
 % Sets the file name
 
-inputfile='/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/Station_grid/Alaska_stations_plus_ghost_Miller_RF_2.5_Stations_only/alaskastations.3d.mod';
-outputfile='/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/Station_grid/Alaska_stations_plus_ghost_Miller_RF_2.5_Stations_only/alaskastations.3d.mod.smooth';
+inputfile='/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/Station_grid/Alaska_stations_plus_ghost_RF_1999_2017_ALL/alaskastations.3d.mod';
+outputfile='/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/Station_grid/Alaska_stations_plus_ghost_RF_1999_2017_ALL/alaskastations.3d.mod.smooth';
 
 % Open and read the file
 fid = fopen(inputfile,'r');

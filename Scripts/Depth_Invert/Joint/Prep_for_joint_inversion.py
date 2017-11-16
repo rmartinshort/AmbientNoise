@@ -29,14 +29,14 @@ def main():
 
     #Specify where the RF data is to be found. This consists of a series of *mean.SAC files output from funclab
     #RF_data = "/home/rmartinshort/Documents/Berkeley/funclab/Meghan_RFs/RF_log_miller.dat"
-    RF_data = "/home/rmartinshort/Documents/Berkeley/funclab/Meghan_RFs/1999_sept_2017"
+    RF_data = "/home/rmartinshort/Documents/Berkeley/funclab/RF_TA_2014_1.0/RAYP_BAZ_STACK"
 
     cwd = os.getcwd()
 
     os.chdir(RF_data)
 
     #Specify the directory where the joint project is to be run
-    newdir = "/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/Station_grid/Alaska_stations_plus_ghost_RF_1999_2017"
+    newdir = "/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/Station_grid/Alaska_stations_plus_ghost_RF_1999_2017_ALL"
 
     if not os.path.exists(newdir):
         os.system('mkdir %s' %newdir)

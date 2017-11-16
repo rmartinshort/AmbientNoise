@@ -14,7 +14,8 @@ def main():
 
     cwd = os.getcwd()
     datadir = "/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/Station_grid/Alaska_stations_plus_ghost_500_RFJ_both"
-    stationsfile = "Alaska_stations.txt"
+    datadir = "/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/Station_grid/Alaska_stations_plus_ghost_RF_1999_2017_ALL"
+    stationsfile = "live_stations.txt"
 
     if not os.path.isdir(datadir):
         print "Cannot find given directory %s" %datadir
@@ -37,7 +38,7 @@ def main():
         stlon = row.Lon + 360.0
         stlat = row.Lat
 
-        print dirname,stlon,stlat
+        #print dirname,stlon,stlat
 
         if os.path.isdir(dirname):
 
@@ -52,24 +53,42 @@ def main():
                 layers = velout.thickness.values
                 Vs = velout.vs.values
 
+                #print indstart,indend
+
                 #Adjust the depths vector so that each vel point is the center of a depth layer
                 for i in range(len(layers)):
                     depths[i] = float(depths[i]) - float(layers[i])/2.0
 
+                #Criteria is that moho must be associated with these velocities
+                deps = depths[(depths>=20)]
+                #print mohovels
+
+                indstart, = np.where( depths==deps[0] )
+                #indend, = np.where( Vs==vels[-1] )
+                                                      
+                mohovels = Vs[indstart:]
+
                 #Get the depth at which the velocity gradient is a maximum - this corresponds to the moho
+                mohograd = np.gradient(mohovels)
                 velgrad = np.gradient(Vs)
-                ind = np.argmax(velgrad)
-                mohodep = depths[ind]
+                ind = np.argmax(mohograd)
+                mohodep = depths[ind+indstart]
 
                 #Make a plot for debugging purposes
-                #plt.figure()
-                #plt.plot(depths,velgrad)
-                #plt.xlabel('Depth[km]')
-                #plt.ylabel('Gradient in Vs')
-                #plt.savefig('Vs_gradient.pdf')
+                plt.figure()
+                plt.plot(depths,velgrad)
+                #plt.axvline(x=depths[indstart],ymin=-0.1,ymax=0.1,color='k')
+                #plt.axvline(x=depths[indend],ymin=-0.1,ymax=0.1,color='k')
+                plt.axvline(x=depths[ind+indstart],ymin=-0.1,ymax=3,color='r',linewidth=4)
+                plt.xlabel('Depth[km]')
+                plt.ylabel('Gradient in Vs')
+                plt.savefig('Vs_gradient.pdf')
+                plt.close()
 
-                if (10 <= mohodep <= 60):
-                    mohodepthfile.write('%g %g %g %s\n' %(stlon,stlat,mohodep,dirname))
+                if (20 <= mohodep <= 60):
+                   mohodepthfile.write('%g %g %g %s\n' %(stlon,stlat,mohodep,dirname))
+                else:
+                   print "Mohodep of %s at station %s" %(mohodep, dirname)
 
             except:
 
