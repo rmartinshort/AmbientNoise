@@ -9,7 +9,7 @@
 cwd=`pwd`
 
 #User enters the directory containing the ANT data
-#datadir="/data/dna/rmartin/Ambient_noise/Alaska/LATEST"
+datadir="/data/dna/rmartin/Ambient_noise/Alaska/LATEST"
 datadir="/data/dna/rmartin/Ambient_noise/Alaska/20142016test"
 
 if [ ! -d $datadir ]; then
@@ -29,7 +29,7 @@ endday=31
 deleteFlag=0
 db=tmp.db
 lag=5000
-outputCorDir=COR2
+outputCorDir=COR
 stackFlag=1
 meanFlag=0
 sdFlag=0

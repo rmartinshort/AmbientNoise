@@ -65,7 +65,6 @@ def construct_example():
 	'''Generate example phase velocity curve'''
 
 	x = np.linspace(6,100,95)
-	print x
 
 	df_dispersion = pd.read_csv('Alaska_example_dispersion_R_Ph.dat',sep=' ',names=['Period','Velocity'])
 	pvals = list(df_dispersion.Period.values[34:])
@@ -74,7 +73,7 @@ def construct_example():
 	#print vvals
 
 	m_pvals = [6,10,15,20,25,30,35]
-	m_vvals = [3.19,3.21,3.35,3.50,3.61,3.72,3.81]
+	m_vvals = [3.1,3.17,3.33,3.48,3.61,3.72,3.81]
 
 	tmpvals = m_pvals + pvals
 	tmvvals = m_vvals + vvals

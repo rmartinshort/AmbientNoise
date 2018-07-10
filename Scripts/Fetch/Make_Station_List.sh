@@ -10,6 +10,7 @@
 
 datadir="/data/dna/rmartin/Ambient_noise/Alaska/LATEST"
 #datadir="/data/dna/rmartin/Ambient_noise/Alaska/ALL_DATA"
+datadir="/data/dna/rmartin/Ambient_noise/Alaska/20142016test"
 
 currendir=`pwd`
 
@@ -21,7 +22,7 @@ fi
 cd $datadir
 pwd
 
-years=( `seq 2014 2017` )
+years=( `seq 2014 2018` )
 months=( `seq -w 1 12` )
 days=( `seq -w 1 31` )
 

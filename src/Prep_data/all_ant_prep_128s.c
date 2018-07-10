@@ -37,7 +37,7 @@ int main(int argc, char *argv[])
 	//these parameters are used in the response removal and filtering
 	static char filter_type[3] = "BP";
 	static int npow = 1, npasses = 2, order = 2, width = 128;
-	//Currently setup for 5-150 seconds
+	//Currently setup for 50-150 seconds
 	static double f1 = 1.0/170.0, f2 = 1.0/160.0, f3 = 1.0/150.0, f4=1.0/5.0, f5 = 1.0 / 4.0, f6 = 1.0/3.0;
 	//frequency max and min's for the earthquake removal
 	static double fmin = .02, fmax = .0667;

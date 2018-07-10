@@ -11,20 +11,24 @@
 #to download from
 
 #Enter the directory where you want to build the data structure here
-datadir=/data/dna/rmartin/Ambient_noise/Alaska/TAONLY_test
+datadir=/data/dna/rmartin/Ambient_noise/Alaska/20142016test
 
 cwd=`pwd`
 
 if [ ! -d $datadir ]; then
     echo "The directory $datadir does not exist!"
-    exit 1
+    mkdir $datadir
 fi
 
 cd $datadir
 
 if [ ! -d "resp_dir" ]; then 
 	mkdir resp_dir
+else
+    rm -rf resp_dir
+    mkdir resp_dir
 fi 
+
 
 latmin=52
 latmax=73
@@ -32,12 +36,14 @@ lonmin=-171
 lonmax=-123
 
 #Not needed if we want all the available stations
-NETWORK='TA'
+NETWORK=''
 #If network is not specified, all available data within a region will be obtained
 #This could be a lot of data, so be careful! 
 
+FetchScript=/data/dna/rmartin/Ambient_noise/CODES/Scripts/Fetch/FetchData_latest
 
-years=( 2014 2015 2016 2017 )
+
+years=( 2014 2015 2016 2017 2018 )
 months=( `seq -w 1 12` )
 days=( `seq -w 1 31` )
 
@@ -49,10 +55,10 @@ for year in "${years[@]}"; do
 			endTime="${year}-${month}-${day}T23:59:59"
 
 			#Get all the PZ response data for the period of time
-			FetchData -vvv -L '--' --lat ${latmin}:${latmax} --lon ${longmin}:${longmax} -C 'LHZ' -s $startTime -e $endTime --net $NETWORK -sd resp_dir
+			$FetchScript -vvv -L '--' --lat ${latmin}:${latmax} --lon ${longmin}:${longmax} -C 'LHZ' -s $startTime -e $endTime -sd resp_dir
 
 			#Actually get the data - this can be buggy, so maybe think of a better way
-			FetchData -vvv -L '--' --lat ${latmin}:${latmax} --lon ${longmin}:${longmax} -C 'LHZ' -s $startTime -e $endTime --net $NETWORK -o ${year}_${month}_${day}.mseed -m ${year}_${month}_${day}.metafile
+			$FetchScript -vvv -L '--' --lat ${latmin}:${latmax} --lon ${longmin}:${longmax} -C 'LHZ' -s $startTime -e $endTime -o ${year}_${month}_${day}.mseed -m ${year}_${month}_${day}.metafile
 
 			mseed2sac -m ${year}_${month}_${day}.metafile ${year}_${month}_${day}.mseed
 

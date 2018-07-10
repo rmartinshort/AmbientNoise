@@ -1,0 +1,2218 @@
+#!/usr/bin/perl
+#
+# FetchData
+#
+# Find the most current version at http://service.iris.edu/clients/
+#
+# Fetch data and related metadata from web services.  The default web
+# service are from the IRIS DMC, other FDSN web services may be
+# specified by setting the following environment variables:
+#
+# SERVICEBASE = the base URI of the service(s) to use (http://service.iris.edu/)
+# TIMESERIESWS = complete URI of service (http://service.iris.edu/fdsnws/dataselect/1)
+# METADATAWS = complete URI of service (http://service.iris.edu/fdsnws/station/1)
+# SACPZWS = complete URI of service (http://service.iris.edu/irisws/sacpz/1)
+# RESPWS = complete URI of service (http://service.iris.edu/irisws/resp/1)
+# FEDCATWS = complete URI of service (http://service.iris.edu/irisws/fedcatalog/1)
+#
+# This program is primarily written to select and fetch waveform data
+# but can also fetch metadata and response information if those
+# services exist at the specified data center.  The fdsnws-dataselect
+# service is a minimum requirement for use of this script. The
+# fdsnws-station service is required if metadata is to be retrieved or
+# if geographic selection options are used.
+#
+# Dependencies: This script should run without problems on Perl
+# release 5.10 or newer, older versions of Perl might require the
+# installation of the following modules (and their dependencies):
+#   Bundle::LWP (libwww-perl)
+#
+## Data selection
+#
+# Data is generally selected by specifying network, station, location,
+# channel, quality, start time and end time.  The name parameters may
+# contain wildcard characters.  All input options are optional but
+# waveform requests should include a time window.  Data may be
+# selected one of three ways:
+#
+# 1) Command line arguments: -N, -S, -L, -C, -Q, -s, -e
+#
+# 2) A BREQ_FAST formatted file, http://ds.iris.edu/manuals/breq_fast.htm
+#
+# 3) A selection file containing a list of:
+#    Net Sta Loc Chan Start End
+#
+# Example selection file contents:
+# II BFO 00 BHZ 2011-01-01T00:00:00 2011-01-01T01:00:00
+# IU ANMO 00 BHZ 2011-01-01T00:00:00 2011-01-01T01:00:00
+# IU COLA 00 BHZ 2011-01-01T00:00:00 2011-01-01T01:00:00
+#
+# For the command line arguments and the selection file the network,
+# station location and channel fields may contain the common * and ?
+# wildcards, meaning zero-to-many and a single character respectively.
+# These fields may also be comma-separated lists, for example, the
+# network may be specified as II,IU,TA to select three networks.
+#
+## Data output
+#
+# miniSEED: If the -o option is used to specify an output file
+# waveform data will be requested based on the selection and all
+# written to the single file.
+#
+# metadata: If the -m option is used to specifiy a metadata file a
+# line will be written to the file for each channel epoch and will
+# contain:
+# "net|sta|loc|chan|lat|lon|elev|depth|azimuth|dip|instrument|scale|scalefreq|scaleunits|samplerate|start|end"
+#
+# This metadata file can be used directly with mseed2sac or tracedsp
+# to create SAC files including basic metadata.
+#
+# SAC P&Zs: If the -sd option is given SAC Poles and Zeros will be
+# fetched and a file for each channel will be written to the specified
+# directory with the name 'SACPZ.Net.Sta.Loc.Chan'.  If this option is
+# used while fetching waveform data, only channels which returned
+# waveforms will be requested.
+#
+# RESP: If the -rd option is given SEED RESP (as used by evalresp)
+# will be fetched and a file for each channel will be written to the
+#specified directory with the name 'RESP.Net.Sta.Loc.Chan'.  If this
+# option is used while fetching waveform data, only channels which
+# returned waveforms will be requested.
+#
+#
+# ## Change history ##
+#
+# 2013.042:
+#  - Rename to FetchData (from FetchBulkData), truncate change log.
+#  - Use the LWP::UserAgent method env_proxy() to check for and use connection
+#  proxy information from environment variables (e.g. http_proxy).
+#  - Add checking of environment variables that will override the web
+#  service base path (i.e. host name).
+#  - Change to allow data requests without metadata fetching.
+#
+# 2013.067:
+#  - Changed metadata parsing to understand FDSN StationXML schema.
+#  - Create override service URLs for ws-sacpz and ws-resp until they
+#  are migrated to service.iris.edu.
+#
+# 2013.074:
+#  - Add work around for bug in Perl's Digest Authorization headers
+#  that conflicts with pedantic behavior of Apache Tomcat, eventually
+#  Tomcat will be more lenient and this work around will be removed.
+#
+# 2013.077:
+#  - Convert metadata output line to be bar (|) separated instead of
+#  comma separated and leave dip in SEED convention.
+#  - Do not translate commas to semicolons in instrument name in metadata.
+#
+# 2013.086:
+#  - Remove code to filter Authorization headers, Apache Tomcat has been fixed
+#  to accept Digest Authentication credentials as submitted by libwww/LWP.
+#
+# 2013.118:
+#  - Fix parsing of start and end times from metadata that are used when no
+#  start and/or end is specified by the caller.
+#
+# 2013.150:
+#  - Allow dash characters in breqfast formatted requests for the network
+#  fields to support virtual networks that use dashes.
+#
+# 2013.186:
+#  - Change service URL override command line options to match
+#  environment variables.
+#
+# 2013.197:
+#  - Fix parsing of element values of "0".
+#
+# 2013.198:
+#  - Add test for minimum version of LWP (libwww) module of 5.806.
+#
+# 2013.212:
+#  - Fetch metadata for request by default, this allows grouping of time series
+#  requests and ultimately more efficient recovery in the case of connection
+#  breaks.  Also added an option of --nometadata or -nm to suppress the
+#  fetching of metadata when it is not strictly needed.
+#  - Remove lingering overrides to deprecated service locations.
+#
+# 2014.056:
+#  - Allow gzip'ed HTTP encoding for metadata, SACPZ and RESP requests if
+#  support exists on the local system.
+#  - Add the -noretry option, when used the script will exit on time series
+#  request timeouts/errors with no retries.
+#
+# 2014.084:
+#  - Add -q option to make the script quiet except for errors.
+#  - Exit value will be 1 if any service requests failed.
+#
+# 2014.107:
+#  - Instantiate new UserAgent client for each group when fetching time series
+#  instead of reusing the same client object.  This is to make sure no
+#  authentication details are shared between requests.
+#
+# 2014.129:
+#  - Convert metadata fetching to use POST capability of fdsnws-station.
+#  This allows making a single metadata request when the request is a list of
+#  many selections (selection list file or BREQ_FAST), instead of generating a
+#  request for each selection line.  More efficient.
+#  - Code simplification: separately manage request list for secondary metadata
+#  such as SACPZ or RESP, track and request a range from earliest to latest
+#  metadata epochs for each channel.  This fixes a bug where only the last epoch
+#  is represented in a metadata file when the request crosses many epochs.
+#
+# 2014.134:
+#  - Optimize the metadata and request window matching by using compiled regexes.
+#
+# 2014.135:
+#  - Fix matching requests and metadata for open time windows.
+#  - Optimize request and metadata matching with a nested hash of compiled regexes.
+#  - Avoid selecting too much secondary metadata (SACPZ and RESP) by shrinking
+#  the request window by one second on each end.
+#
+# 2014.136:
+#  - Fetch metadata for virtual networks separately from all other metadata in
+#  order to properly match data requests with metadata.
+#  - Properly match lists in network, station, location and channel fields.
+#
+# 2014.142:
+#  - Fetch metadata using extents for each unique NSLC group, this can be a much
+#  smaller (and faster query) for requests with a large number of repeated NSLCs.
+#
+# 2014.168:
+#  - Explicitly match metadata epochs to time series requests to avoid
+#  matching substrings, e.g. MONP matching MONP2.  Only new code effected.
+#  - Accept empty location strings in metadata as "--" identifiers.
+#  - Follow redirects for POST method in addition to default GET and HEAD.
+#  - A small bit of special output for 429 (Too Many Requests) results to
+#  help the user understand what is going on if a server were to return this.
+#  - Fix handling of metadata with no end times (open interval).
+#
+# 2014.253:
+#  - Add detection of stream truncation by checking for "#STREAMERROR"
+#  at the end of the content buffer.  As there is no way to commicate
+#  an error in HTTP after the transfer has started (and a full byte
+#  count is not known) the DMC's servers will include an error message
+#  in the stream when an error occurs.  This should occur rarely.
+#  - Optimize downloading, in particular for time series, by a) avoiding
+#  checks for gzip-encoded HTTP streams when not needed and b) avoiding
+#  copying of the data buffer.
+#
+# 2014.322:
+#  - Add -F federation option, this will cause the request to be sent
+#  to a federator catalog service.  The response of the catalog service
+#  is parsed and requests are sent to each identified data center.
+#  - Restructure internal flow for multiple data center handling.
+#  - Add FederateRequest() to handle federation catalog servicing.
+#
+# 2014.323:
+#  - Add -O and -M options to write all federated output to the same files.
+#  By default a data center prefix is added to the output from each DC.
+#  - Only include a quality specification in time series requests if
+#  supplied by the user.
+#
+# 2014.325:
+#  - Add error message and more graceful failure when service interfaces
+#  have not been identified for requested data.
+#
+# 2014.342:
+#  - Federator: Add parsing of values for SACPZSERVICE and RESPSERVICE in
+#  addition to the already parsed STATIONSERVICE and DATASELECTSERVICE.
+#  - Federator: Gracefully skip unrecognized SERVICE declarations and
+#  key=value parameters.
+#  - Fix creation of SACPZ and RESP directories.
+#  - Include output file names in diagnostic output.
+#  - Add data center identifier, when present, to header of metadata files.
+#
+# 2014.351:
+#  - Avoid undefined reference by checking for metadata before trying to access it.
+#
+# 2015.014:
+#  - Change validation of channel codes in breq_fast parsing to accept
+#  values less than 3 characters, this will allow single '*' wildcards.
+#  - Add support for matching metadata using exclusions as supported by
+#  the DMC's fdsnws-station service.
+#
+# 2015.135:
+#  - Fix SAC PZ and RESP output directory designation and creation when
+#  Federation is being performed.  Data center specific directories are
+#  now created in the directory specified for the output.
+#
+# 2015.246:
+#  - Restore capability to write output miniSEED to stdout by specifying
+#  the output file as a single dash.
+#  - Support non-persisent, session cookies for HTTP requests.
+#  - On authentication errors, retry the request a single time.
+#
+# 2015.341:
+#  - Change retry count for failed time series requests from 60 to 10.
+#  This mitigates long delays somewhat when data centers do not fail
+#  for a very long time.
+#
+# 2016.007:
+#  - Trim trailing slashes from service endpoint URLs as a convenience.
+#
+# 2016.062:
+#  - Do not retry on 413 response and print server response on all non-auth errors.
+#  - Trim trailing slash from SERVICEBASE values.
+#
+# 2016.089:
+#  - Optimize the matching of metadata to requests by avoiding Tie'd hashes and
+#  combining regular expressions for fewer match executions.
+#
+# 2016.260:
+#  - When writing separate output files per data center, append data center ID
+#  to the file name portion of the specified path instead of just the beginning.
+#  - Only do 2 retries for time series requests when Federating.
+#  - Add warnings when using minimum segment length and longest segment only
+#  options when Federating, many data centers do no support these leading to
+#  sometimes cryptic errors.
+#
+# 2016.299:
+#   - Fix appending of data center ID to output file names when
+#   directories are not specified.
+#
+# 2017.017:
+#   - Add a minimum request interval and use it to throttle web service request
+#   loops to avoid generating requests too fast.  At 50 milliseconds the throttling
+#   will not engage for the vast majority of users and uses.
+#
+# 2017.164:
+#  - Set $ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0 to allow usage with
+#    HTTPS endpoints without peforming certificate verification.
+#  - Allow -e end time specification to be an offset relative to the
+#    start time in the pattern #.#[SMHD], e.g. 30m, 1h, 2D, etc.
+#  - Allow -F option to accept a list of data centers that is passed
+#    to the Federator to limit the response to specific centers.
+#    Centers: http://service.iris.edu/irisws/fedcatalog/1/datacenters
+#  - Add more details to help message if -h is specified more than once.
+#    Relegate lesser used options to the extended help and add more details
+#    of federation usage and specification of alternate WS endpoints.
+#
+#  Author: Chad Trabant, IRIS Data Management Center
+
+use strict;
+use File::Basename;
+use File::Spec;
+use Getopt::Long;
+use LWP 5.806; # Require minimum version
+use LWP::UserAgent;
+use HTTP::Status qw(status_message);
+use HTTP::Date;
+use Time::HiRes qw(nanosleep);
+
+my $version = "2017.164";
+
+my $scriptname = basename($0);
+
+# Default web service base
+my $servicebase = 'http://service.iris.edu';
+
+# Check for environment variable overrides for servicebase
+$servicebase = $ENV{'SERVICEBASE'} if ( exists $ENV{'SERVICEBASE'} );
+$servicebase =~ s/\/$//; # Trim trailing slash
+
+# Web service for time series data
+my $timeseriesservice = "$servicebase/fdsnws/dataselect/1";
+
+# Check for environment variable override for timeseriesservice
+$timeseriesservice = $ENV{'TIMESERIESWS'} if ( exists $ENV{'TIMESERIESWS'} );
+
+# Default web service for metadata
+my $metadataservice = "$servicebase/fdsnws/station/1";
+
+# Check for environment variable override for metadataservice
+$metadataservice = $ENV{'METADATAWS'} if ( exists $ENV{'METADATAWS'} );
+
+# Web service for SAC P&Z
+my $sacpzservice = "$servicebase/irisws/sacpz/1";
+
+# Check for environment variable override for sacpzservice
+$sacpzservice = $ENV{'SACPZWS'} if ( exists $ENV{'SACPZWS'} );
+
+# Web service for RESP
+my $respservice = "$servicebase/irisws/resp/1";
+
+# Check for environment variable override for respservice
+$respservice = $ENV{'RESPWS'} if ( exists $ENV{'RESPWS'} );
+
+# Web service for federation catalog
+my $fedcatservice = "$servicebase/irisws/fedcatalog/1";
+
+# Check for environment variable override for fedcatservice
+$fedcatservice = $ENV{'FEDCATWS'} if ( exists $ENV{'FEDCATWS'} );
+
+# HTTP UserAgent reported to web services
+my $useragent = "$scriptname/$version Perl/$] " . new LWP::UserAgent->_agent;
+
+# Waveform data request group size in terms of station-days
+my $groupstadays = 30;
+
+# A minimum time interval (seconds) for web service requests
+# This is used to avoid sending requests too quickly
+my $minimumrequestinterval = 0.05;
+
+# Allow encrypted connections without checking for valid certificate matching
+# the expected hostname.
+$ENV{PERL_LWP_SSL_VERIFY_HOSTNAME} = 0;
+
+my $usage      = undef;
+my $verbose    = 0;
+my $nobsprint  = undef;
+
+my $net        = undef;
+my $sta        = undef;
+my $loc        = undef;
+my $chan       = undef;
+my $qual       = undef;
+my $starttime  = undef;
+my $endtime    = undef;
+my @latrange   = ();      # (minlat:maxlat)
+my @lonrange   = ();      # (minlon:maxlon)
+my @degrange   = ();      # (lat:lon:maxradius[:minradius])
+my $selectfile = undef;
+my $bfastfile  = undef;
+my $mslopt     = undef;
+my $lsoopt     = undef;
+my $appname    = undef;
+my $auth       = undef;
+my $outfile    = undef;
+my $outfileapp = undef;
+my $sacpzdir   = undef;
+my $respdir    = undef;
+my $metafile   = undef;
+my $metafileapp= undef;
+my $nometadata = undef;
+my $noretry    = undef;
+my $retries    = 10;
+my $federate   = undef;
+my $exitvalue  = 0;
+
+my $inflater   = undef;
+
+# If Compress::Raw::Zlib is available configure inflater for RFC 1952 (gzip)
+if ( eval("use Compress::Raw::Zlib; 1") ) {
+  use Compress::Raw::Zlib;
+  $inflater = new Compress::Raw::Zlib::Inflate( -WindowBits => WANT_GZIP,
+                                                -ConsumeInput => 0 );
+}
+
+# Parse command line arguments
+Getopt::Long::Configure ("bundling_override");
+my $getoptsret = GetOptions(
+    'help|usage|h+'    => \$usage,
+    'verbose|v+'       => \$verbose,
+    'quiet|q'          => sub { $verbose = -1; },
+    'nobs'             => \$nobsprint,
+    'nometadata|nm'    => \$nometadata,
+    'noretry|nr'       => \$noretry,
+    'federate|F:s'     => \$federate,
+    'net|N=s'          => \$net,
+    'sta|S=s'          => \$sta,
+    'loc|L=s'          => \$loc,
+    'chan|C=s'         => \$chan,
+    'qual|Q=s'         => \$qual,
+    'starttime|s=s'    => \$starttime,
+    'endtime|e=s'      => \$endtime,
+    'lat=s'            => \@latrange,
+    'lon=s'            => \@lonrange,
+    'radius=s'         => \@degrange,
+    'selectfile|l=s'   => \$selectfile,
+    'bfastfile|b=s'    => \$bfastfile,
+    'msl=s'            => \$mslopt,
+    'lso'              => \$lsoopt,
+    'appname|A=s'      => \$appname,
+    'auth|a=s'         => \$auth,
+    'outfile|o=s'      => \$outfile,
+    'outfileapp|O=s'   => \$outfileapp,
+    'sacpzdir|sd=s'    => \$sacpzdir,
+    'respdir|rd=s'     => \$respdir,
+    'metafile|m=s'     => \$metafile,
+    'metafileapp|M=s'  => \$metafileapp,
+    'timeseriesws=s'   => \$timeseriesservice,
+    'metadataws=s'     => \$metadataservice,
+    'sacpzws=s'        => \$sacpzservice,
+    'respws=s'         => \$respservice,
+);
+
+my $required = (defined $net || defined $sta ||
+                defined $loc || defined $chan ||
+                scalar @latrange || scalar @lonrange || scalar @degrange ||
+                defined $starttime || defined $endtime ||
+                defined $selectfile || defined $bfastfile );
+
+if ( ! $getoptsret || $usage || ! $required ) {
+  print "$scriptname: collect time series and related metadata (version $version)\n";
+  print "http://service.iris.edu/clients/\n\n";
+  print "Usage: $scriptname [options]\n\n";
+  print " Options:\n";
+  print " -v                Increase verbosity, may be specified multiple times\n";
+  print " -h                Print this help message, if multiple print more help\n";
+  print " -q                Be quiet, do not print anything but errors\n";
+  print " -N,--net          Network code, list and wildcards (* and ?) accepted\n";
+  print " -S,--sta          Station code, list and wildcards (* and ?) accepted\n";
+  print " -L,--loc          Location ID, list and wildcards (* and ?) accepted\n";
+  print " -C,--chan         Channel codes, list and wildcards (* and ?) accepted\n";
+  print " -Q,--qual         Quality indicator, by default no quality is specified\n";
+  print " -s starttime      Specify start time (YYYY-MM-DD,HH:MM:SS.ssssss)\n";
+  print " -e endtime        Specify end time (YYYY-MM-DD,HH:MM:SS.ssssss or #[SMHD])\n";
+  print " --lat min:max     Specify a minimum and/or maximum latitude range\n";
+  print " --lon min:max     Specify a minimum and/or maximum longitude range\n";
+  print " --radius lat:lon:maxradius[:minradius]\n";
+  print "                     Specify circular region with optional minimum radius\n";
+  print " -l listfile       Read list of selections from file\n";
+  print " -b bfastfile      Read list of selections from BREQ_FAST file\n";
+  print " -a user:pass      User and password for access to restricted data\n";
+  print "\n";
+  print " -F [DC1[,DC2]]    Federate the request to multiple data centers if needed\n";
+  print "                     Federation may be limited to an optional list of DCs\n";
+  print "                     Output files are prefixed by data center identifiers\n";
+  print "\n";
+  print " -o outfile        Fetch time series data and write to output file\n";
+  print " -sd sacpzdir      Fetch SAC P&Zs and write files to sacpzdir\n";
+  print " -rd respdir       Fetch RESP and write files to respdir\n";
+  print " -m metafile       Write basic metadata to specified file\n";
+  print "\n";
+
+  if ( $usage >= 2 ) {
+    print " More options and help:\n";
+    print " -nm               Do not request metadata unless output file requested\n";
+    print " -nr               No retry, exit immediately on time series request errors\n";
+    print " -msl length       Limit returned data to a minimum segment length\n";
+    print " -lso              Limit returned data to the longest segment only\n";
+    print " -A appname        Application/version string for identification\n";
+    print " -O outfile        Write all timeseries to a single file, useful with -F\n";
+    print " -M metafile       Write all metadata to a single file, useful with -F\n";
+    print "\n";
+    print "== Specifying data centers for federation\n";
+    print "  List of data center identifiers:\n";
+    print "    http://service.iris.edu/irisws/fedcatalog/1/datacenters\n";
+    print "  To avoid a center, negate it by adding a 'not' prefix, e.g. 'notIRISDMC'\n";
+    print "\n";
+    print "== Specifying alternate web service endpoints (when not Federating)\n";
+    print "  Alternate service endpoints may be specified using the following options:\n";
+    print " -timeseriesws URL  (e.g. http://service.iris.edu/fdsnws/dataselect/1)\n";
+    print " -metadataws URL  (e.g. http://service.iris.edu/fdsnws/station/1)\n";
+    print " -respws URL  (e.g. http://service.iris.edu/irisws/resp/1)\n";
+    print " -sacpzws URL  (e.g. http://service.iris.edu/irisws/sacpz/1/)\n";
+    print "\n";
+  }
+
+  exit 1;
+}
+
+# Truncate any existing appending output file and assign to outfile
+if ( $outfileapp ) {
+  die "Cannot specify both -o and -O\n" if ( $outfile );
+
+  if ( -f "$outfileapp" ) {
+    truncate ($outfileapp, 0) || die "Cannot truncate existing file $outfileapp\n";
+  }
+
+  $outfile = $outfileapp;
+}
+
+# Truncate any existing appending metadata file and assign to metafile
+if ( $metafileapp ) {
+  die "Cannot specify both -m and -M\n" if ( $metafile );
+
+  if ( -f "$metafileapp" ) {
+    truncate ($metafileapp, 0) || die "Cannot truncate existing file $metafileapp\n";
+  }
+
+  $metafile = $metafileapp;
+}
+
+if ( ! $outfile && ! $metafile && ! $sacpzdir && ! $respdir ) {
+  die "No output options specified, try -h for usage information\n";
+}
+
+# Print script name and local time string
+if ( $verbose >= 1 ) {
+  my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time);
+  printf STDERR "$scriptname ($version) at %4d-%02d-%02d %02d:%02d:%02d\n", $year+1900, $mon+1, $mday, $hour, $min, $sec;
+}
+
+# Check for existence of output directories
+if ( $sacpzdir && ! -d "$sacpzdir" ) {
+  die "Cannot find SAC P&Zs output directory: $sacpzdir\n";
+}
+if ( $respdir && ! -d "$respdir" ) {
+  die "Cannot find RESP output directory: $respdir\n";
+}
+
+# Check for time window if requesting time series data
+if ( $outfile && ( ! defined $selectfile && ! defined $bfastfile &&
+     ( ! defined $starttime || ! defined $endtime ) ) ) {
+  die "Cannot request time series data without start and end times\n";
+}
+
+# Normalize time strings given on the command line
+if ( $starttime ) {
+  my ($year,$month,$mday,$hour,$min,$sec,$subsec) = split (/[-:,.\s\/T]/, $starttime);
+  $starttime = sprintf ("%04d-%02d-%02dT%02d:%02d:%02d", $year, $month, $mday, $hour, $min, $sec);
+  $starttime .= ".$subsec" if ( $subsec );
+}
+
+if ( $endtime ) {
+  # Check for and parse time in duration pattern: #.#[SMHD]
+  if ( $endtime =~ /^[\d\.]+[SsMmHhDd]?$/ ) {
+    if ( $starttime ) {
+      my ($offset, $timeunit) = $endtime =~ /^([\d\.]+)([SsMmHhDd]?)$/i;
+      $timeunit = 'S' if (! $timeunit);
+
+      # Convert offset value to seconds if specified as days, hours or minutes
+      if ($timeunit =~ /[Dd]/) {
+        $offset *= 86400;
+      }
+      elsif ($timeunit =~ /[Hh]/) {
+        $offset *= 3600;
+      }
+      elsif ($timeunit =~ /[Mm]/) {
+        $offset *= 60;
+      }
+
+      # Calculate end time from start + offset and generate string
+      my $rstartepoch = str2time ($starttime, "UTC");
+      if ( defined $rstartepoch ) {
+        $endtime = &mktimestring($rstartepoch + $offset, 1);
+      }
+      else {
+        die "Unable to parse start time: '$starttime'\n"
+      }
+    }
+    else {
+      die "Cannot specify end time as duration without specifying start time\n";
+    }
+  }
+  else {
+    my ($year,$month,$mday,$hour,$min,$sec,$subsec) = split (/[-:,.\s\/T]/, $endtime);
+    $endtime = sprintf ("%04d-%02d-%02dT%02d:%02d:%02d", $year, $month, $mday, $hour, $min, $sec);
+    $endtime .= ".$subsec" if ( $subsec );
+  }
+}
+
+# Validate and prepare lat, lon and radius input
+if ( scalar @latrange ) {
+  @latrange = split (/:/, $latrange[0]);
+
+  if ( defined $latrange[0] && ($latrange[0] < -90.0 || $latrange[0] > 90.0) ) {
+    die "Minimum latitude out of range: $latrange[0]\n";
+  }
+  if ( defined $latrange[1] && ($latrange[1] < -90.0 || $latrange[1] > 90.0) ) {
+    die "Maximum latitude out of range: $latrange[1]\n";
+  }
+}
+if ( scalar @lonrange ) {
+  @lonrange = split (/\:/, $lonrange[0]);
+
+  if ( defined $lonrange[0] && ($lonrange[0] < -180.0 || $lonrange[0] > 180.0) ) {
+    die "Minimum longitude out of range: $lonrange[0]\n";
+  }
+  if ( defined $lonrange[1] && ($lonrange[1] < -180.0 || $lonrange[1] > 180.0) ) {
+    die "Maximum longitude out of range: $lonrange[1]\n";
+  }
+}
+if ( scalar @degrange ) {
+  @degrange = split (/\:/, $degrange[0]);
+
+  if ( scalar @degrange < 3 || scalar @degrange > 4 ) {
+    die "Unrecognized radius specification: @degrange\n";
+  }
+  if ( defined $degrange[0] && ($degrange[0] < -90.0 || $degrange[0] > 90.0) ) {
+    die "Radius latitude out of range: $degrange[0]\n";
+  }
+  if ( defined $degrange[1] && ($degrange[1] < -180.0 || $degrange[1] > 180.0) ) {
+    die "Radius longitude out of range: $degrange[1]\n";
+  }
+}
+
+# An array to hold data selections
+my @selections = ();
+
+# Add command line selection to list
+if ( defined $net || defined $sta || defined $loc || defined $chan ||
+     defined $starttime || defined $endtime ) {
+  push (@selections,"$net|$sta|$loc|$chan|$starttime|$endtime");
+}
+
+# Read selection list file
+if ( $selectfile ) {
+  print STDERR "Reading data selection from list file '$selectfile'\n";
+  &ReadSelectFile ($selectfile);
+}
+
+# Read BREQ_FAST file
+if ( $bfastfile ) {
+  print STDERR "Reading data selection from BREQ_FAST file '$bfastfile'\n";
+  &ReadBFastFile ($bfastfile);
+}
+
+# Report complete data selections
+if ( $verbose > 2 ) {
+  print STDERR "== Data selections ==\n";
+  foreach my $select ( @selections ) {
+    print STDERR "    $select\n";
+  }
+  print STDERR "Latitude range: $latrange[0] : $latrange[1]\n" if ( scalar @latrange );
+  print STDERR "Longitude range: $lonrange[0] : $lonrange[1]\n" if ( scalar @lonrange );
+  print STDERR "Radius range: $degrange[0] : $degrange[1] : $degrange[2] : $degrange[3]\n" if ( scalar @degrange );
+}
+
+# A mega hash for data center details, requests and some results
+#
+# datacenter{DATACENTER}{website} = URL
+# datacenter{DATACENTER}{timeseriesws} = URL
+# datacenter{DATACENTER}{metadataws} = URL
+# datacenter{DATACENTER}{sacpzws} = URL
+# datacenter{DATACENTER}{respws} = URL
+#
+# datacenter{DATACENTER}{selection} = ref to ARRAY of selections
+# datacenter{DATACENTER}{request} = ref to HASH of requests
+# datacenter{DATACENTER}{metarequest} = ref to HASH of metadata requests (time extents)
+# datacenter{DATACENTER}{metadata} = ref to ARRAY of metadata
+my %datacenter = ();
+
+# A buffer for metadata service responses
+my $metadataresponse;
+
+# Track bytes downloaded in callback handlers
+my $datasize = 0;
+
+# Fetch metadata from the station web service by default unless the nometadata option
+# is specified or if metadata output file has been requested or if geographic range
+# selection is requested.
+$nometadata = undef if ( $metafile || $sacpzdir || $respdir
+			 || scalar @latrange || scalar @lonrange || scalar @degrange );
+
+# Resolve federated requests
+if ( defined $federate ) {
+  # Translate negation specified as 'not' with the '-' needed by the service
+  $federate =~ s/not/\-/g;
+
+  # Set number of time series request retries to 2
+  $retries = 2;
+
+  # Print warnings for options not commonly supported
+  if ( $mslopt ) {
+    print STDERR "WARNING: Minimum segment length (-msl) option is not broadly supported by data centers\n"
+  }
+  if ( $lsoopt ) {
+    print STDERR "WARNING: Longest segment only (-lso) option is not broadly supported by data centers\n"
+  }
+
+  &FederateRequest( $fedcatservice, \@selections );
+
+  if ( $verbose >= 1 ) {
+    printf STDERR "Federation catalog results from %d data center(s):\n", scalar keys %datacenter;
+    foreach my $dckey ( sort keys %datacenter ) {
+      printf STDERR "Data center: $dckey, %d selections\n", scalar  @{$datacenter{$dckey}{selection}};
+      print STDERR "  MetadataWS: $datacenter{$dckey}{metadataws}\n" if ( $datacenter{$dckey}{metadataws} );
+      print STDERR "  TimeSeriesWS: $datacenter{$dckey}{timeseriesws}\n" if ( $datacenter{$dckey}{timeseriesws} );
+      print STDERR "  SACPZWS: $datacenter{$dckey}{sacpzws}\n" if ( $datacenter{$dckey}{sacpzws} );
+      print STDERR "  RESPWS: $datacenter{$dckey}{respws}\n" if ( $datacenter{$dckey}{respws} );
+    }
+  }
+}
+# Otherwise set up default (empty) data center
+else {
+  # Trim trailing slashes from service endpoints
+  $timeseriesservice =~ s/\/$//;
+  $metadataservice =~ s/\/$//;
+  $sacpzservice =~ s/\/$//;
+  $respservice =~ s/\/$//;
+
+  # Add default/environmental entries to datacenter hash
+  $datacenter{""}{timeseriesws} = $timeseriesservice;
+  $datacenter{""}{metadataws} = $metadataservice;
+  $datacenter{""}{sacpzws} = $sacpzservice;
+  $datacenter{""}{respws} = $respservice;
+
+  # User selections used directly
+  $datacenter{""}{selection} = \@selections;
+}
+
+# Process each data center
+foreach my $dckey ( sort keys %datacenter ) {
+
+  if ( $dckey ) {
+    printf STDERR "Fetching data from $dckey (%s)\n", $datacenter{$dckey}{website};
+  }
+
+  # Fetch metadata unless requested not to
+  if ( ! defined $nometadata )  {
+    if ( ! exists $datacenter{$dckey}{metadataws} ) {
+      print STDERR "Cannot fetch metadata, no fdsnws-station service available for data center $dckey\n";
+    }
+    else {
+      &FetchMetaData( $dckey );
+    }
+  }
+  # Build request hash directly from selections if not fetching metadata and not already populated
+  elsif ( ! exists $datacenter{$dckey}{request} ) {
+    foreach my $selection ( @{$datacenter{$dckey}{selection}} ) {
+      my ($snet,$ssta,$sloc,$schan,$sstart,$send) = split (/\|/,$selection);
+
+      # Subsitute non-specified fields with wildcards
+      $snet = "*" if ( ! $snet );
+      $ssta = "*" if ( ! $ssta );
+      $sloc = "*" if ( ! $sloc );
+      $schan = "*" if ( ! $schan );
+
+      $datacenter{$dckey}{request}->{"$snet|$ssta|$sloc|$schan|$sstart|$send"} = "$sstart|$send";
+    }
+  }
+
+  # Report complete data request
+  if ( $verbose > 2 ) {
+    print STDERR "== Request list ==\n";
+    foreach my $req ( sort keys %{$datacenter{$dckey}{request}} ) {
+      print STDERR "    $req (metadata: $datacenter{$dckey}{request}->{$req})\n";
+    }
+  }
+
+  # Fetch time series data if output file specified
+  if ( $outfile ) {
+    if ( ! exists $datacenter{$dckey}{timeseriesws} ) {
+      print STDERR "Cannot fetch time series, no fdsnws-dataselect service available for data center $dckey\n";
+    }
+    else {
+      # Determine output file mode (overwrite or append) and add data center prefix if needed
+      my $outfilemode = ( defined $outfileapp ) ? ">>" : ">";
+      my $outfilename = $outfile;
+      if ( ! defined $outfileapp && $dckey ) {
+        # Add data center identifier, $dckey, to the beginning of the file name
+        my ($volume,$directories,$file) = File::Spec->splitpath ($outfilename);
+
+        if ( $directories ) {
+          $outfilename = File::Spec->catfile ($directories, "$dckey-$file");
+        }
+        else {
+          $outfilename = "$dckey-$file";
+        }
+      }
+
+      &FetchTimeSeriesData( $dckey, $outfilename, $outfilemode ) if ( $outfile );
+    }
+  }
+
+  # Collect SAC P&Zs if output directory specified
+  if ( $sacpzdir ) {
+    if ( ! exists $datacenter{$dckey}{sacpzws} ) {
+      print STDERR "Cannot fetch SAC PZs, no SACPZ service available for data center $dckey\n";
+    }
+    else {
+      my $dcsacpzdir = ( $dckey ) ? File::Spec->catdir ($sacpzdir,$dckey) : $sacpzdir;
+
+      if ( ! -d "$dcsacpzdir" ) {
+        mkdir ($dcsacpzdir, 0755) || die "Cannot create directory $dcsacpzdir: $!\n";
+      }
+
+      &FetchSACPZ( $dckey, $dcsacpzdir );
+    }
+  }
+
+  # Collect RESP if output directory specified
+  if ( $respdir ) {
+    if ( ! exists $datacenter{$dckey}{respws} ) {
+      print STDERR "Cannot fetch RESP, no RESP service available for data center $dckey\n";
+    }
+    else {
+      my $dcrespdir = ( $dckey ) ? File::Spec->catdir ($respdir,$dckey) : $respdir;
+
+      if ( ! -d "$dcrespdir" ) {
+        mkdir ($dcrespdir, 0755) || die "Cannot create directory $dcrespdir: $!\n";
+      }
+
+      &FetchRESP( $dckey, $dcrespdir );
+    }
+  }
+
+  # Write metadata to file
+  if ( $metafile && exists $datacenter{$dckey}{metadata} ) {
+    if ( scalar @{$datacenter{$dckey}{metadata}} <= 0 ) {
+      printf STDERR "No metdata available\n";
+    }
+    else {
+      # Open metadata file, appending if requested, adding data center prefix if needed
+      my $mode = ( defined $metafileapp ) ? ">>" : ">";
+      my $metafilename = $metafile;
+      if ( ! defined $metafileapp && $dckey ) {
+        # Add data center identifier, $dckey, to the beginning of the file name
+        my ($volume,$directories,$file) = File::Spec->splitpath ($metafilename);
+
+        if ( $directories ) {
+          $metafilename = File::Spec->catfile ($directories, "$dckey-$file");
+        }
+        else {
+          $metafilename = "$dckey-$file";
+        }
+      }
+
+      open (META, $mode, $metafilename) || die "Cannot open metadata file '$metafilename': $!\n";
+
+      printf STDERR "Writing metadata (%d channel epochs) to file: %s\n",
+      scalar @{$datacenter{$dckey}{metadata}}, $metafilename if ( $verbose >= 0 );
+
+      # Print data center identifier
+      printf META "#$dckey: %s\n", $datacenter{$dckey}{website} if ( $dckey );
+
+      # Print header line
+      print META "#net|sta|loc|chan|lat|lon|elev|depth|azimuth|dip|instrument|scale|scalefreq|scaleunits|samplerate|start|end\n";
+
+      foreach my $channel ( sort @{$datacenter{$dckey}{metadata}} ) {
+        my ($net,$sta,$loc,$chan,$start,$end,$lat,$lon,$elev,$depth,$azimuth,$dip,$instrument,$samplerate,$sens,$sensfreq,$sensunit) =
+	        split (/\|/, $channel);
+
+        $sensfreq = sprintf ("%0g", $sensfreq);
+        $samplerate = sprintf ("%0g", $samplerate);
+
+        print META "$net|$sta|$loc|$chan|$lat|$lon|$elev|$depth|$azimuth|$dip|$instrument|$sens|$sensfreq|$sensunit|$samplerate|$start|$end\n";
+      }
+
+      close META;
+    }
+  }
+} # Done looping through data centers
+
+my ($sec,$min,$hour,$mday,$mon,$year,$wday,$yday,$isdst) = localtime(time);
+printf (STDERR "DONE at %4d-%02d-%02d %02d:%02d:%02d\n",
+        $year+1900, $mon+1, $mday, $hour, $min, $sec) if ( $verbose >= 0 );
+
+exit $exitvalue;
+## End of main
+
+
+######################################################################
+# ReadSelectFile:
+#
+# Read selection list file and add entries to the @selections array.
+#
+# Selection lines are expected to be in the following form:
+#
+# "Net Sta Loc Chan Start End"
+#
+# The Net, Sta, Loc and Channel fields are required and can be
+# specified as wildcards.
+######################################################################
+sub ReadSelectFile {
+  my $selectfile = shift;
+
+  open (SF, "<$selectfile") || die "Cannot open '$selectfile': $!\n";
+
+  foreach my $line ( <SF> ) {
+    chomp $line;
+    next if ( $line =~ /^\#/ ); # Skip comment lines
+
+    my ($net,$sta,$loc,$chan,$start,$end) = split (' ', $line);
+
+    next if ( ! defined $chan );
+
+    # Normalize time strings
+    if ( $start ) {
+      my ($year,$month,$mday,$hour,$min,$sec,$subsec) = split (/[-:,.\s\/T]/, $start);
+      $start = sprintf ("%04d-%02d-%02dT%02d:%02d:%02d", $year, $month, $mday, $hour, $min, $sec);
+      $start .= ".$subsec" if ( $subsec );
+    }
+
+    if ( $end ) {
+      my ($year,$month,$mday,$hour,$min,$sec,$subsec) = split (/[-:,.\s\/T]/, $end);
+      $end = sprintf ("%04d-%02d-%02dT%02d:%02d:%02d", $year, $month, $mday, $hour, $min, $sec);
+      $end .= ".$subsec" if ( $subsec );
+    }
+
+    # Add selection to global list
+    push (@selections,"$net|$sta|$loc|$chan|$start|$end");
+  }
+
+  close SF;
+} # End of ReadSelectFile()
+
+
+######################################################################
+# ReadBFastFile:
+#
+# Read BREQ_FAST file and add entries to the @selections array.
+#
+######################################################################
+sub ReadBFastFile {
+  my $bfastfile = shift;
+
+  open (BF, "<$bfastfile") || die "Cannot open '$bfastfile': $!\n";
+
+  my $linecount = 0;
+  BFLINE: foreach my $line ( <BF> ) {
+    chomp $line;
+    $linecount++;
+    next if ( ! $line ); # Skip empty lines
+
+    # Capture .QUALTIY header
+    if ( $line =~ /^\.QUALITY .*$/ ) {
+      ($qual) = $line =~ /^\.QUALITY ([DRQMBE])/;
+      next;
+    }
+
+    next if ( $line =~ /^\./ ); # Skip other header lines
+
+    my ($sta,$net,$syear,$smon,$sday,$shour,$smin,$ssec,$eyear,$emon,$eday,$ehour,$emin,$esec,$count,@chans) = split (' ', $line);
+
+    # Simple validation of BREQ FAST fields
+    if ( $sta !~ /^[A-Za-z0-9*?]{1,5}$/ ) {
+      print "Unrecognized station code: '$sta', skipping line $linecount\n" if ( $verbose >= 1 );
+      next;
+    }
+    if ( $net !~ /^[-_A-Za-z0-9*?]+$/ ) {
+      print "Unrecognized network code: '$net', skipping line $linecount\n" if ( $verbose >= 1 );
+      next;
+    }
+    if ( $syear !~ /^\d\d\d\d$/ ) {
+      print "Unrecognized start year: '$syear', skipping line $linecount\n" if ( $verbose >= 1 );
+      next;
+    }
+    if ( $smon !~ /^\d{1,2}$/ ) {
+      print "Unrecognized start month: '$smon', skipping line $linecount\n" if ( $verbose >= 1 );
+      next;
+    }
+    if ( $sday !~ /^\d{1,2}$/ ) {
+      print "Unrecognized start day: '$sday', skipping line $linecount\n" if ( $verbose >= 1 );
+      next;
+    }
+    if ( $shour !~ /^\d{1,2}$/ ) {
+      print "Unrecognized start hour: '$shour', skipping line $linecount\n" if ( $verbose >= 1 );
+      next;
+    }
+    if ( $smin !~ /^\d{1,2}$/ ) {
+      print "Unrecognized start min: '$smin', skipping line $linecount\n" if ( $verbose >= 1 );
+      next;
+    }
+    if ( $ssec !~ /^\d{1,2}\.?\d{0,6}?$/ ) {
+      print "Unrecognized start seconds: '$ssec', skipping line $linecount\n" if ( $verbose >= 1 );
+      next;
+    }
+    if ( $eyear !~ /^\d\d\d\d$/ ) {
+      print "Unrecognized end year: '$eyear', skipping line $linecount\n" if ( $verbose >= 1 );
+      next;
+    }
+    if ( $emon !~ /^\d{1,2}$/ ) {
+      print "Unrecognized end month: '$emon', skipping line $linecount\n" if ( $verbose >= 1 );
+      next;
+    }
+    if ( $eday !~ /^\d{1,2}$/ ) {
+      print "Unrecognized end day: '$eday', skipping line $linecount\n" if ( $verbose >= 1 );
+      next;
+    }
+    if ( $ehour !~ /^\d{1,2}$/ ) {
+      print "Unrecognized end hour: '$ehour', skipping line $linecount\n" if ( $verbose >= 1 );
+      next;
+    }
+    if ( $emin !~ /^\d{1,2}$/ ) {
+      print "Unrecognized end min: '$emin', skipping line $linecount\n" if ( $verbose >= 1 );
+      next;
+    }
+    if ( $esec !~ /^\d{1,2}\.?\d{0,6}?$/ ) {
+      print "Unrecognized end seconds: '$esec', skipping line $linecount\n" if ( $verbose >= 1 );
+      next;
+    }
+    if ( $count !~ /^\d+$/ || $count <= 0 ) {
+      print "Invalid channel count field: '$count', skipping line $linecount\n" if ( $verbose >= 1 );
+      next;
+    }
+    if ( scalar @chans <= 0 ) {
+      print "No channels specified, skipping line $linecount\n" if ( $verbose >= 1 );
+      next;
+    }
+
+    # Extract location ID if present, i.e. if channel count is one less than present
+    my $loc = undef;
+    $loc = pop @chans if ( scalar @chans == ($count+1) );
+
+    if ( $loc && $loc !~ /^[A-Za-z0-9*?\-]{1,2}$/ ) {
+      print "Unrecognized location ID: '$loc', skipping line $linecount\n" if ( $verbose >= 1 );
+      next;
+    }
+
+    foreach my $chan ( @chans ) {
+      if ( $chan !~ /^[A-Za-z0-9*?]{1,3}$/ ) {
+        print "Unrecognized channel codes: '$chan', skipping line $linecount\n" if ( $verbose >= 1 );
+        next BFLINE;
+      }
+    }
+
+    if ( scalar @chans != $count ) {
+      printf "Channel count field ($count) does not match number of channels specified (%d), skipping line $linecount\n",
+      scalar @chans if ( $verbose >= 1 );
+      next;
+    }
+
+    # Normalize time strings
+    my ($ssec,$ssub) = split (/\./, $ssec);
+    my $start = sprintf ("%04d-%02d-%02dT%02d:%02d:%02d", $syear, $smon, $sday, $shour, $smin, $ssec);
+    $start .= ".$ssub" if ( $ssub );
+    my ($esec,$esub) = split (/\./, $esec);
+    my $end = sprintf ("%04d-%02d-%02dT%02d:%02d:%02d", $eyear, $emon, $eday, $ehour, $emin, $esec);
+    $end .= ".$esub" if ( $esub );
+
+    # Add selection to global list for each channel
+    foreach my $chan ( @chans ) {
+      push (@selections,"$net|$sta|$loc|$chan|$start|$end");
+    }
+  }
+
+  close BF;
+} # End of ReadBFastFile()
+
+
+######################################################################
+# FederateRequest:
+#
+# Submit selections to federation catalog service and parse response
+# into per-data center requests.
+#
+# This will populate the following %datacenter components:
+# %datacenter{DATACENTER}{website}
+# %datacenter{DATACENTER}{stationws}
+# %datacenter{DATACENTER}{dataselectws}
+# %datacenter{DATACENTER}{sacpzws}
+# %datacenter{DATACENTER}{respws}
+# %datacenter{DATACENTER}{selection}
+#
+# Return count of unique data centers identified in response on
+# success and undef on error.
+######################################################################
+sub FederateRequest {
+  my $fedcatws = shift;
+  my $selectionref = shift;
+
+  my $datacentercount = 0;
+
+  # Create HTTP user agent
+  my $ua = RequestAgent->new();
+  $ua->env_proxy;
+
+  # Create web service URI
+  my $uri = $fedcatws . "/query";
+
+  # Create POST data selection
+  my $postdata = "";
+
+  if ( length($federate) > 0 ) {
+    $postdata .= "datacenter=$federate\n";
+  }
+  if ( scalar @latrange ) {
+    $postdata .= "minlatitude=$latrange[0]\n" if ( defined $latrange[0] );
+    $postdata .= "maxlatitude=$latrange[1]\n" if ( defined $latrange[1] );
+  }
+  if ( scalar @lonrange ) {
+    $postdata .= "minlongitude=$lonrange[0]\n" if ( defined $lonrange[0] );
+    $postdata .= "maxlongitude=$lonrange[1]\n" if ( defined $lonrange[1] );
+  }
+  if ( scalar @degrange ) {
+    $postdata .= "latitude=$degrange[0]\n" if ( defined $degrange[0] );
+    $postdata .= "longitude=$degrange[1]\n" if ( defined $degrange[1] );
+    $postdata .= "maxradius=$degrange[2]\n" if ( defined $degrange[2] );
+    $postdata .= "minradius=$degrange[3]\n" if ( defined $degrange[3] );
+  }
+
+  # Translate selections to POST body repeat lines and build selection hash for matching
+  foreach my $selection ( @{$selectionref} ) {
+    my ($snet,$ssta,$sloc,$schan,$sstart,$send) = split (/\|/,$selection);
+
+    # Subsitute non-specified fields with wildcards
+    $snet = "*" if ( ! $snet );
+    $ssta = "*" if ( ! $ssta );
+    $sloc = "*" if ( ! $sloc );
+    $schan = "*" if ( ! $schan );
+    my $pstart = ( $sstart ) ? $sstart : "*";
+    my $pend = ( $send ) ? $send : "*";
+
+    $postdata .= "$snet $ssta $sloc $schan $pstart $pend\n";
+  }
+
+  my $ftime = Time::HiRes::time;
+
+  print STDERR "Federator catalog URI: '$uri'\n" if ( $verbose >= 2 );
+  print STDERR "Federator catalog (POST):\n$postdata" if ( $verbose > 1 );
+
+  print STDERR "Fetching federator catalog results :: " if ( $verbose >= 1 );
+
+  $datasize = 0;
+  $metadataresponse = "";
+
+  # Fetch metadata from web service using callback routine
+  my $response = ( $inflater ) ?
+    $ua->post($uri, 'Accept-Encoding' => 'gzip', Content => $postdata, ':content_cb' => \&MDCallBack ) :
+    $ua->post($uri, Content => $postdata, ':content_cb' => \&MDCallBack );
+
+  $inflater->inflateReset if ( $inflater );
+
+  if ( $response->code == 204 ) {
+    print (STDERR "No federator catalog results available\n") if ( $verbose >= 1 );
+    return;
+  }
+  elsif ( ! $response->is_success() ) {
+    print (STDERR "Error fetching federator catalog result: "
+	   . $response->code . " :: " . status_message($response->code) . "\n");
+    print STDERR "------\n" . $response->decoded_content . "\n------\n";
+    print STDERR "  URI: '$uri'\n" if ( $verbose >= 2 );
+
+    $exitvalue = 1;
+  }
+  else {
+    printf (STDERR "%s\n", ($nobsprint)?sizestring($datasize):"") if ( $verbose >= 1 );
+  }
+
+  printf STDERR "Federator response code: %d\n", $response->code if ( $verbose >= 1 );
+  if ( $verbose >= 2 ) {
+    print STDERR "Federator response:\n";
+    print STDERR "-----------\n$metadataresponse\n-----------\n";
+  }
+
+  my $duration = Time::HiRes::time - $ftime;
+  my $rate = $datasize/(($duration)?$duration:0.000001);
+  printf (STDERR "Received %s from federator catalog in %.1f seconds (%s/s)\n",
+	  sizestring($datasize), $duration, sizestring($rate)) if ( $verbose >= 0 );
+
+  # Parse response from catalog service
+  # Selections: "net|sta|loc|chan|starttime|endtime"
+  my $dckey = undef;
+  foreach my $line ( split (/[\n\r]+/, $metadataresponse) ) {
+    chomp $line;
+
+    next if ( $line =~ /^#.*/ );  # Skip comment lines beginning with '#'
+
+    # Reset data center parsing on empty line
+    if ( ! $line ) {
+      $dckey = undef;
+      next;
+    }
+
+    my ($key,$website) = $line =~ /^DATACENTER\=([^,]+)\,(.*)$/;
+    my ($stationws) = $line =~ /^STATIONSERVICE\=(.+)$/;
+    my ($dataselectws) = $line =~ /^DATASELECTSERVICE\=(.+)$/;
+    my ($sacpzws) = $line =~ /^SACPZSERVICE\=(.+)$/;
+    my ($respws) = $line =~ /^RESPSERVICE\=(.+)$/;
+
+    if ( $key ) {
+      $dckey = $key;
+      $datacenter{$dckey}{website} = $website;
+      $datacentercount++;
+    }
+    elsif ( $stationws ) {
+      if ( $dckey ) {
+        $stationws =~ s/\/$//; # Trim trailing slash
+        $datacenter{$dckey}{metadataws} = $stationws;
+      }
+      else {
+        print STDERR "Federation catalog service returned STATIONSERVICE without DATACENTER declared\n";
+        return undef;
+      }
+    }
+    elsif ( $dataselectws ) {
+      if ( $dckey ) {
+        $dataselectws =~ s/\/$//; # Trim trailing slash
+        $datacenter{$dckey}{timeseriesws} = $dataselectws;
+      }
+      else {
+        print STDERR "Federation catalog service returned DATASELECTSERVICE without DATACENTER declared\n";
+        return undef;
+      }
+    }
+    elsif ( $sacpzws ) {
+      if ( $dckey ) {
+        $sacpzws =~ s/\/$//; # Trim trailing slash
+        $datacenter{$dckey}{sacpzws} = $sacpzws;
+      }
+      else {
+        print STDERR "Federation catalog service returned SACPZSERVICE without DATACENTER declared\n";
+        return undef;
+      }
+    }
+    elsif ( $respws ) {
+      if ( $dckey ) {
+        $respws =~ s/\/$//; # Trim trailing slash
+        $datacenter{$dckey}{respws} = $respws;
+      }
+      else {
+        print STDERR "Federation catalog service returned RESPSERVICE without DATACENTER declared\n";
+        return undef;
+      }
+    }
+    # Ignore any other service declarations
+    elsif ( $line =~ /^.*SERVICE\=.+$/ )
+      {
+        print STDERR "Unused service declaration: $line\n" if ( $verbose >= 2 );
+      }
+    # Ignore key=value parameters
+    elsif ( $line =~ /^[\-\.\w]+\=[\-\.\w]+$/ )
+      {
+        print STDERR "Unused key=value: $line\n" if ( $verbose >= 2 );
+      }
+    # All other lines should be selection lines
+    else {
+      my ($net,$sta,$loc,$chan,$start,$end) = split (/\s+/, $line);
+
+      if ( ! defined $end ) {
+        print STDERR "Federation catalog service returned unrecognized selection line:\n'$line'\n";
+        return undef;
+      }
+
+      # Add to data center selection list
+      if ( $dckey ) {
+        push ( @{$datacenter{$dckey}{selection}}, "$net|$sta|$loc|$chan|$start|$end");
+      }
+      else {
+        print STDERR "Federation catalog service returned selecion line without DATACENTER declared\n";
+        return undef;
+      }
+    }
+  } # Done parsing federator catalog response
+
+  return $datacentercount;
+} # End of FederateRequest
+
+
+######################################################################
+# FetchTimeSeriesData:
+#
+# Collect time series data for each entry in the %request hash.  All
+# returned data is written to the global output file (outfile).
+#
+# The request list is separatated into groups where the group size is
+# defined in terms of station-days.  If the request for a group fails
+# it will be retried, after too many failures we give up.
+#
+######################################################################
+sub FetchTimeSeriesData {
+  my $dckey = shift;
+  my $outfilename = shift;
+  my $outfilemode = shift;
+
+  # Open output file with specified name and mode
+  if ( $outfilename ne "-" ) {
+    open (OUT, $outfilemode, $outfilename) || die "Cannot open output file '$outfilename': $!\n";
+  }
+  else {
+    open (OUT, ">&STDOUT") || die "Cannot open output file '$outfilename': $!\n";
+  }
+
+  my $count = 0;
+
+  # Determine request data groups to avoid single large requests,
+  # this is done for two reasons:
+  # 1) To facilitate re-starting of requests after broken connections
+  #    wihout needing re-submit the entire request
+  # 2) Avoid service timeouts
+  my @grouprequest = ();
+
+  my $groupdays = 0;
+  my $groupidx = 0;
+  my $groupsta = undef;
+  foreach my $req ( sort keys %{$datacenter{$dckey}{request}} ) {
+    my ($wnet,$wsta,$wloc,$wchan,$wstart,$wend) = split (/\|/, $req);
+    $count++;
+
+    # Determine day coverage for this request
+    my $rstartepoch = str2time ($wstart, "UTC");
+    my $rendepoch = str2time ($wend, "UTC");
+    my $reqdays = int ((($rendepoch - $rstartepoch) / 86400.0) + 0.5);
+    $reqdays = 1 if ( $reqdays < 1 );
+
+    $groupsta = $wsta if ( ! defined $groupsta );
+
+    # Assume first request for a station represents all channels in terms of days
+    if ( $wsta ne $groupsta ) {
+      $groupdays += $reqdays;
+      $groupsta = $wsta;
+    }
+
+    # If beyond groupstadays move to the next group
+    if ( $groupdays >= $groupstadays ) {
+      $groupdays = 0;
+      $groupidx++;
+    }
+
+    # Add request to current group
+    push (@{$grouprequest[$groupidx]}, "$wnet $wsta $wloc $wchan $wstart $wend");
+  }
+
+  if ( ! $count ) {
+    print STDERR "No data selections to request\n";
+    return;
+  }
+
+  print STDERR "Fetching time series data ($count selections)\n" if ( $verbose >= 1 );
+  my $ftime = Time::HiRes::time;
+  my $totalbytes = 0;
+  my $requestfinish = undef;
+
+  # Request each data group
+  my $groupnum = 1;
+  my $groupcnt = scalar @grouprequest;
+  my $fetchcnt = 1;
+  my $outoffset = 0;
+  foreach my $groupref ( @grouprequest ) {
+  REDOGROUP:
+    # Create web service URI
+    my $query = ( $auth ) ? "queryauth" : "query";
+    my $uri = $datacenter{$dckey}{timeseriesws} . "/$query";
+
+    # Create POST data selection: specify options followed by selections
+    my $postdata = "";
+    $postdata .= "quality=$qual\n" if ( defined $qual );
+    $postdata .= "minimumlength=$mslopt\n" if ( defined $mslopt );
+    $postdata .= "longestonly=true\n" if ( defined $lsoopt );
+
+    foreach my $req ( @{$groupref} ) {
+      $postdata .= "$req\n";
+    }
+
+    # Impose the minimum request interval, potentially throttling loop
+    if (defined $requestfinish && (Time::HiRes::time - $requestfinish) < $minimumrequestinterval) {
+      my $remaining = $minimumrequestinterval - (Time::HiRes::time - $requestfinish);
+      nanosleep ($remaining * 1E9) if ( $remaining > 0 );
+    }
+
+    print STDERR "Time series URI: '$uri'\n" if ( $verbose > 1 );
+    print STDERR "Data selection (POST):\n$postdata" if ( $verbose > 1 );
+
+    print STDERR "Downloading time series data (group $groupnum of $groupcnt) :: " if ( $verbose >= 1 );
+
+    $datasize = 0;
+
+    # Create HTTP user agent
+    my $ua = RequestAgent->new();
+    $ua->env_proxy;
+
+    # Fetch time series data from web service using callback routine
+    my $response = $ua->post($uri, Content => $postdata, ':content_cb' => \&DLCallBack_NoGZIP );
+
+    $requestfinish = Time::HiRes::time;
+
+    if ( $response->code == 204 ) {
+      print (STDERR "No data available\n") if ( $verbose >= 1 );
+    }
+    elsif ( $response->code == 401 ) {
+      # If this is the first authentication failure try one more time
+      if ( $fetchcnt == 1 ) {
+        $fetchcnt++;
+        goto REDOGROUP;
+      }
+
+      print (STDERR "AUTHORIZATION FAILED, username and password not recognized\n");
+      last;
+    }
+    elsif ( ! $response->is_success() ) {
+      print (STDERR "Error fetching time series data: "
+	     . $response->code . " :: " . $response->message . "\n");
+
+      if ( $response->code == 429 ) {
+        print STDERR "Usage has exceeded data center limit, try making fewer concurrent requests\n\n";
+      }
+
+      print STDERR "------\n" . $response->decoded_content . "\n------\n";
+      print STDERR "  URI: '$uri'\n" if ( $verbose > 1 );
+
+      # Exit immediately if we are not retrying
+      exit 1 if ( $noretry );
+
+      # Exit on fatal 400 (Bad Request) and 413 (Request Entity Too Large)
+      exit 1 if ( $response->code == 400 || $response->code == 413 );
+
+      # For real output files rewind position to the end of the last group data
+      seek (OUT, $outoffset, 0) if ( $outfile ne "-" );
+
+      # Retry in 10 seconds or give up if already tried 10 times.
+      if ( $fetchcnt < $retries ) {
+        print STDERR "Retrying request in 10 seconds ($fetchcnt of $retries retries)\n";
+        sleep 10;
+        $fetchcnt++;
+        goto REDOGROUP;
+      }
+      else {
+        print STDERR "Too many retries, giving up.\n";
+        last;
+      }
+    }
+    else {
+      printf (STDERR "%s\n", ($nobsprint)?sizestring($datasize):"") if ( $verbose >= 1 );
+    }
+
+    # Get ready for next group
+    $fetchcnt = 1;
+    $groupnum++;
+    $outoffset = tell (OUT);
+    $totalbytes += $datasize;
+  }
+
+  close OUT;
+
+  my $duration = Time::HiRes::time - $ftime;
+  my $rate = $totalbytes/(($duration)?$duration:0.000001);
+  printf (STDERR "Received %s of time series data in %.1f seconds (%s/s) - written to %s\n",
+	  sizestring($totalbytes), $duration, sizestring($rate), $outfilename) if ( $verbose >= 0 );
+
+  # Remove empty file
+  unlink $outfile if ( -z $outfile );
+} # End of FetchTimeSeriesData
+
+
+######################################################################
+# FetchSACPZ:
+#
+# Fetch SAC Poles and Zeros for each entry in the %metarequest hash
+# with a defined value.  The result for each channel is written to a
+# separate file in the specified directory.
+#
+######################################################################
+sub FetchSACPZ {
+  my $dckey = shift;
+  my $dcdir = shift;
+
+  # Create HTTP user agent
+  my $ua = RequestAgent->new();
+  $ua->env_proxy;
+
+  my $count = 0;
+  my $total = 0;
+  foreach my $req ( keys %{$datacenter{$dckey}{metarequest}} )
+    { $total++ if ( defined $datacenter{$dckey}{metarequest}->{$req} ); }
+
+  print STDERR "Fetching SAC Poles and Zeros, writing to '$dcdir'\n" if ( $verbose >= 1 );
+  my $ftime = Time::HiRes::time;
+  my $totalbytes = 0;
+  my $requestfinish = undef;
+
+  foreach my $req ( sort keys %{$datacenter{$dckey}{metarequest}} ) {
+    # Skip entries with values not defined, perhaps no data was fetched
+    next if ( ! defined $datacenter{$dckey}{metarequest}->{$req} );
+
+    my ($rnet,$rsta,$rloc,$rchan) = split (/\|/, $req);
+    my ($mstart,$mend) = split (/\|/, $datacenter{$dckey}{metarequest}->{$req});
+
+    # Create time strings for request, shrink window by one second to avoid
+    # matching too many metadata ranges by avoiding the boundary.
+    my $rstart = &mktimestring ($mstart + 1);
+    my $rend = &mktimestring ($mend - 1);
+    $count++;
+
+    # Generate output file name and open
+    my $sacpzfile = "$dcdir/SACPZ.$rnet.$rsta.$rloc.$rchan";
+    if ( ! open (OUT, ">$sacpzfile") ) {
+      print STDERR "Cannot open output file '$sacpzfile': $!\n";
+      next;
+    }
+
+    # Create web service URI
+    my $uri = $datacenter{$dckey}{sacpzws} . "/query?net=$rnet&sta=$rsta&loc=$rloc&cha=$rchan";
+    $uri .= "&starttime=$rstart" if ( $rstart );
+    $uri .= "&endtime=$rend" if ( $rend );
+
+    # Impose the minimum request interval, potentially throttling loop
+    if (defined $requestfinish && (Time::HiRes::time - $requestfinish) < $minimumrequestinterval) {
+      my $remaining = $minimumrequestinterval - (Time::HiRes::time - $requestfinish);
+      nanosleep ($remaining * 1E9) if ( $remaining > 0 );
+    }
+
+    print STDERR "SAC-PZ URI: '$uri'\n" if ( $verbose > 1 );
+
+    print STDERR "Downloading $sacpzfile ($count/$total) :: " if ( $verbose >= 1 );
+
+    $datasize = 0;
+
+    # Fetch data from web service using callback routine
+    my $response = ( $inflater ) ?
+      $ua->get($uri, 'Accept-Encoding' => 'gzip', ':content_cb' => \&DLCallBack_GZIP ) :
+      $ua->get($uri, ':content_cb' => \&DLCallBack_NoGZIP );
+
+    $requestfinish = Time::HiRes::time;
+
+    $inflater->inflateReset if ( $inflater );
+
+    if ( $response->code == 404 || $response->code == 204 ) {
+      print (STDERR "No data available\n") if ( $verbose >= 1 );
+    }
+    elsif ( ! $response->is_success() ) {
+      print (STDERR "Error fetching SAC PZ data: "
+	     . $response->code . " :: " . status_message($response->code) . "\n");
+      print STDERR "------\n" . $response->decoded_content . "\n------\n";
+      print STDERR "  URI: '$uri'\n" if ( $verbose > 1 );
+
+      $exitvalue = 1;
+    }
+    else {
+      printf (STDERR "%s\n", ($nobsprint)?sizestring($datasize):"") if ( $verbose >= 1 );
+    }
+
+    # Add data bytes to global total
+    $totalbytes += $datasize;
+
+    close OUT;
+
+    # Remove file if no data was fetched
+    unlink $sacpzfile if ( $datasize == 0 );
+  }
+
+  my $duration = Time::HiRes::time - $ftime;
+  my $rate = $totalbytes/(($duration)?$duration:0.000001);
+  printf (STDERR "Received %s of SAC P&Zs in %.1f seconds (%s/s)\n",
+	  sizestring($totalbytes), $duration, sizestring($rate)) if ( $verbose >= 0 );
+
+} # End of FetchSACPZ
+
+
+######################################################################
+# FetchRESP:
+#
+# Fetch SEED RESP for each entry in the %metarequest hash with a value
+# of 1.  The result for each channel is written to a separate file in
+# the specified directory.
+#
+######################################################################
+sub FetchRESP {
+  my $dckey = shift;
+  my $dcdir = shift;
+
+  # Create HTTP user agent
+  my $ua = RequestAgent->new();
+  $ua->env_proxy;
+
+  my $count = 0;
+  my $total = 0;
+  foreach my $req ( keys %{$datacenter{$dckey}{metarequest}} )
+    { $total++ if ( defined $datacenter{$dckey}{metarequest}->{$req} ); }
+
+  print STDERR "Fetching RESP, writing to '$dcdir'\n" if ( $verbose >= 1 );
+  my $ftime = Time::HiRes::time;
+  my $totalbytes = 0;
+  my $requestfinish = undef;
+
+  foreach my $req ( sort keys %{$datacenter{$dckey}{metarequest}} ) {
+    # Skip entries with values not defined, perhaps no data was fetched
+    next if ( ! defined $datacenter{$dckey}{metarequest}->{$req} );
+
+    my ($rnet,$rsta,$rloc,$rchan) = split (/\|/, $req);
+    my ($mstart,$mend) = split (/\|/, $datacenter{$dckey}{metarequest}->{$req});
+
+    # Create time strings for request, shrink window by one second to avoid
+    # matching too many metadata ranges by avoiding the boundary.
+    my $rstart = &mktimestring ($mstart + 1);
+    my $rend = &mktimestring ($mend - 1);
+    $count++;
+
+    # Translate metadata location ID from "--" to blank
+    my $ploc = ( $rloc eq "--" ) ? "" : $rloc;
+
+    # Generate output file name and open
+    my $respfile = "$dcdir/RESP.$rnet.$rsta.$ploc.$rchan";
+    if ( ! open (OUT, ">$respfile") ) {
+      print STDERR "Cannot open output file '$respfile': $!\n";
+      next;
+    }
+
+    # Create web service URI
+    my $uri = $datacenter{$dckey}{respws} . "/query?net=$rnet&sta=$rsta&loc=$rloc&cha=$rchan";
+    $uri .= "&starttime=$rstart" if ( $rstart );
+    $uri .= "&endtime=$rend" if ( $rend );
+
+    # Impose the minimum request interval, potentially throttling loop
+    if (defined $requestfinish && (Time::HiRes::time - $requestfinish) < $minimumrequestinterval) {
+      my $remaining = $minimumrequestinterval - (Time::HiRes::time - $requestfinish);
+      nanosleep ($remaining * 1E9) if ( $remaining > 0 );
+    }
+
+    print STDERR "RESP URI: '$uri'\n" if ( $verbose > 1 );
+
+    print STDERR "Downloading $respfile ($count/$total) :: " if ( $verbose >= 1 );
+
+    $datasize = 0;
+
+    # Fetch data from web service using callback routine
+    my $response = ( $inflater ) ?
+      $ua->get($uri, 'Accept-Encoding' => 'gzip', ':content_cb' => \&DLCallBack_GZIP ) :
+      $ua->get($uri, ':content_cb' => \&DLCallBack_NoGZIP );
+
+    $requestfinish = Time::HiRes::time;
+
+    $inflater->inflateReset if ( $inflater );
+
+    if ( $response->code == 404 || $response->code == 204 ) {
+      print (STDERR "No data available\n") if ( $verbose >= 1 );
+    }
+    elsif ( ! $response->is_success() ) {
+      print (STDERR "Error fetching RESP data: "
+	     . $response->code . " :: " . status_message($response->code) . "\n");
+      print STDERR "------\n" . $response->decoded_content . "\n------\n";
+      print STDERR "  URI: '$uri'\n" if ( $verbose > 1 );
+
+      $exitvalue = 1;
+    }
+    else {
+      printf (STDERR "%s\n", ($nobsprint)?sizestring($datasize):"") if ( $verbose >= 1 );
+    }
+
+    # Add data bytes to global total
+    $totalbytes += $datasize;
+
+    close OUT;
+
+    # Remove file if no data was fetched
+    unlink $respfile if ( $datasize == 0 );
+  }
+
+  my $duration = Time::HiRes::time - $ftime;
+  my $rate = $totalbytes/(($duration)?$duration:0.000001);
+  printf (STDERR "Received %s of RESP in %.1f seconds (%s/s)\n",
+	  sizestring($totalbytes), $duration, sizestring($rate)) if ( $verbose >= 0 );
+
+} # End of FetchRESP
+
+
+######################################################################
+# DLCallBack_NoGZIP:
+#
+# A call back for LWP downloading that passes the data directly to the
+# low-level worker function with no detection of gzip encoding.
+######################################################################
+sub DLCallBack_NoGZIP {
+  # @_ :: 0=data, 1=response object, 2=protocol object
+
+  &DLCallBack_Worker ($_[0], 0);
+}
+
+
+######################################################################
+# DLCallBack_GZIP:
+#
+# A call back for LWP downloading that checks for gzip encoding and
+# sets the inflation flag for the low-level worker function.
+######################################################################
+sub DLCallBack_GZIP {
+  # @_ :: 0=data, 1=response object, 2=protocol object
+
+  my $inflateflag = ( $_[1]->content_encoding() =~ /gzip/ );
+
+  &DLCallBack_Worker ($_[0], $inflateflag);
+}
+
+
+######################################################################
+# DLCallBack_Worker:
+#
+# A worker function used by the LWP call back routines.
+#
+# Write received data to output file, tally up the received data size
+# and print and updated (overwriting) byte count string.
+######################################################################
+sub DLCallBack_Worker {
+  # @_ :: 0=data, 1=inflate flag
+
+  $datasize += length($_[0]);
+
+  if ( $_[1] ) {
+    my $datablock = "";
+    $inflater->inflate($_[0], $datablock);
+    print OUT $datablock;
+  }
+  else {
+    print OUT $_[0];
+  }
+
+  if ( $verbose >= 1 && ! $nobsprint ) {
+    printf (STDERR "%-10.10s\b\b\b\b\b\b\b\b\b\b", sizestring($datasize));
+  }
+
+  # Detect stream truncation by checking for a trailing "#STREAMERROR"
+  if ( $_[0] =~ /#STREAMERROR$/ ) {
+    print STDERR "\nERROR: Stream truncated, download likely incomplete\n";
+
+    exit 1;
+  }
+}
+
+
+######################################################################
+# FetchMetaData:
+#
+# Collect metadata and expand wildcards for selected data set.
+#
+# Resulting metadata is placed in the global @metadata array with each
+# entry taking the following form:
+#   "net|sta|loc|chan|start|end|lat|lon|elev|depth|azimuth|dip|instrument|samplerate|sensitivity|sensfreq|sensunits"
+#
+# In addition, an entry for the unique NSLCQ time-window is added to
+# the %request hash, used later to request data.  The value of the
+# request hash entries is maintained to be the range of Channel epochs
+# that match the time selection.
+#
+# As an exception to fetching all metadata at once, any selection
+# specified with a virtual network (starting with [_.~]) is fetched
+# individually.  This is needed to properly match the returned metadata
+# (that does not contain virtual network codes) to the time range of
+# the request.
+#
+######################################################################
+sub FetchMetaData {
+  my $dckey = shift;
+
+  my $mtime = Time::HiRes::time;
+
+  # Split selections into lists for virtual networks and regular networks
+  # Requests including virtual networks are identified by searching
+  # for [_.~] in the first (network) field.
+  my @vnetselections = grep { (split(/\|/))[0] =~ /[\_\.\~]/ } @{$datacenter{$dckey}{selection}};
+  my @netselections = grep { (split(/\|/))[0] !~ /[\_\.\~]/ } @{$datacenter{$dckey}{selection}};
+
+  my $totalepochs = 0;
+
+  # Fetch metadata for virtual network requests individually
+  foreach my $selection ( @vnetselections ) {
+    $totalepochs += &FetchMetaDataHelper ($dckey, [$selection]);
+  }
+
+  # Process all regular networks as a group
+  if ( scalar @netselections ) {
+    $totalepochs += &FetchMetaDataHelper ($dckey, \@netselections);
+  }
+
+  my $duration = Time::HiRes::time - $mtime;
+  printf (STDERR "Processed metadata for $totalepochs channel epochs in %.1f seconds\n",
+	  $duration) if ( $verbose >= 0 );
+
+} # End of FetchMetaData
+
+
+######################################################################
+# FetchMetaDataHelper:
+#
+# Construct, issue and process request for metadata on behalf of
+# FetchMetaData().  This will populate the global @metadata array and
+# %request hash.
+#
+# Returns the total number of metadata epochs processed.
+######################################################################
+sub FetchMetaDataHelper {
+  my $dckey = shift;
+  my $selectionref = shift;
+
+  # Create HTTP user agent
+  my $ua = RequestAgent->new();
+  $ua->env_proxy;
+
+  # Create web service URI
+  my $uri = $datacenter{$dckey}{metadataws} . "/query";
+
+  # Create POST data selection: specify options followed by selections
+  my $postdata = "level=channel\n";
+  $postdata .= "format=text\n";
+
+  if ( scalar @latrange ) {
+    $postdata .= "minlatitude=$latrange[0]\n" if ( defined $latrange[0] );
+    $postdata .= "maxlatitude=$latrange[1]\n" if ( defined $latrange[1] );
+  }
+  if ( scalar @lonrange ) {
+    $postdata .= "minlongitude=$lonrange[0]\n" if ( defined $lonrange[0] );
+    $postdata .= "maxlongitude=$lonrange[1]\n" if ( defined $lonrange[1] );
+  }
+  if ( scalar @degrange ) {
+    $postdata .= "latitude=$degrange[0]\n" if ( defined $degrange[0] );
+    $postdata .= "longitude=$degrange[1]\n" if ( defined $degrange[1] );
+    $postdata .= "maxradius=$degrange[2]\n" if ( defined $degrange[2] );
+    $postdata .= "minradius=$degrange[3]\n" if ( defined $degrange[3] );
+  }
+
+  # A nested hash used to match data requests with metadata
+  my %selectmatch = ();
+
+  # A nested hash of time extents for each NSLC request
+  my %selectextent = ();
+
+  # Translate selections to POST body repeat lines and build selection hash for matching
+  foreach my $selection ( @{$selectionref} ) {
+    my ($snet,$ssta,$sloc,$schan,$sstart,$send) = split (/\|/,$selection);
+
+    # Substitute non-specified fields with wildcards
+    $snet = "*" if ( ! $snet );
+    $ssta = "*" if ( ! $ssta );
+    $sloc = "*" if ( ! $sloc );
+    $schan = "*" if ( ! $schan );
+    my $pstart = ( $sstart ) ? $sstart : "*";
+    my $pend = ( $send ) ? $send : "*";
+
+    my $kstart = ( $sstart ) ? str2time ($sstart, "UTC") : undef;
+    my $kend = ( $send ) ? str2time ($send, "UTC") : undef;
+
+    # Track time extents for each NSLC
+    if ( ! exists $selectextent{$snet}{$ssta}{$sloc}{$schan} ) {
+      $selectextent{$snet}{$ssta}{$sloc}{$schan} = [$pstart,$pend,$kstart,$kend];
+    }
+    else {
+      my ($estart,$eend,$ekstart,$ekend) = @{$selectextent{$snet}{$ssta}{$sloc}{$schan}};
+
+      if ( ! defined $kstart || $kstart < $ekstart ) {
+        $ekstart = $kstart;
+        $estart = $pstart;
+      }
+      if ( ! defined $kend || $kend > $ekend ) {
+        $ekend = $kend;
+        $eend = $pend;
+      }
+
+      $selectextent{$snet}{$ssta}{$sloc}{$schan} = [$estart,$eend,$ekstart,$ekend];
+    }
+
+    # Use '*' for virtual network matching, search for [_.~] to identify vnets
+    # The caller of this subroutine should guarantee only a single request
+    $snet = "*" if ( $snet =~ /[\_\.\~]/ );
+
+    # Nested hash keys: convert simple globbing wildcards (and list) to regex
+    # Translations: '*' => '.*' and '?' => '.' and ',' => '|'
+    $snet =~ s/\*/\.\*/g;   $snet =~ s/\?/\./g;  $snet =~ s/\,/\|/g;
+    $ssta =~ s/\*/\.\*/g;   $ssta =~ s/\?/\./g;  $ssta =~ s/\,/\|/g;
+    $sloc =~ s/\*/\.\*/g;   $sloc =~ s/\?/\./g;  $sloc =~ s/\,/\|/g;
+    $schan =~ s/\*/\.\*/g; $schan =~ s/\?/\./g; $schan =~ s/\,/\|/g;
+
+    # Separate selections and exclusions.  The below voodoo:
+    # split on | separator, select entries starting with/without - exclusion,
+    # wrap with ^$ terminators and rebuild expression.  Finally, remove the - characters.
+    my $snetselect = join ('|', map { qq/\^$_\$/ } grep (!/^-/, split (/\|/,$snet)));
+    my $snetexclude = join ('|', map { qq/\^$_\$/ } grep (/^-/, split (/\|/,$snet)));
+    $snetexclude =~ s/\-//g;
+
+    my $sstaselect = join ('|', map { qq/\^$_\$/ } grep (!/^-/, split (/\|/,$ssta)));
+    my $sstaexclude = join ('|', map { qq/\^$_\$/ } grep (/^-/, split (/\|/,$ssta)));
+    $sstaexclude =~ s/\-//g;
+
+    my $slocselect = join ('|', map { qq/\^$_\$/ } grep (!/^-/, split (/\|/,$sloc)));
+    my $slocexclude = join ('|', map { qq/\^$_\$/ } grep (/^-/, split (/\|/,$sloc)));
+    $slocexclude =~ s/\-//g;
+
+    my $schanselect = join ('|', map { qq/\^$_\$/ } grep (!/^-/, split (/\|/,$schan)));
+    my $schanexclude = join ('|', map { qq/\^$_\$/ } grep (/^-/, split (/\|/,$schan)));
+    $schanexclude =~ s/\-//g;
+
+    # Compile regular expressions for faster comparison.
+    # Selections and exclusions are combined into a single expression as needed.
+    if ( $snetexclude && $snetselect ) { $snet = qr/(?!(${snetexclude}))(?=(${snetselect}))/ }
+    elsif ( $snetexclude ) { $snet = qr/(?!(${snetexclude}))/ }
+    else { $snet = qr/(${snetselect})/ }
+
+    if ( $sstaexclude && $sstaselect ) { $ssta = qr/(?!(${sstaexclude}))(?=(${sstaselect}))/ }
+    elsif ( $sstaexclude ) { $ssta = qr/(?!(${sstaexclude}))/ }
+    else { $ssta = qr/(${sstaselect})/ }
+
+    if ( $slocexclude && $slocselect ) { $sloc = qr/(?!(${slocexclude}))(?=(${slocselect}))/ }
+    elsif ( $slocexclude ) { $sloc = qr/(?!(${slocexclude}))/ }
+    else { $sloc = qr/(${slocselect})/ }
+
+    if ( $schanexclude && $schanselect ) { $schan = qr/(?!(${schanexclude}))(?=(${schanselect}))/ }
+    elsif ( $schanexclude ) { $schan = qr/(?!(${schanexclude}))/ }
+    else { $schan = qr/(${schanselect})/ }
+
+    # Add entry to selection matching hash, using hashes of regexes as keys
+    $selectmatch{$snet}{$ssta}{$sloc}{$schan}{"$kstart|$kend"} = "$sstart|$send";
+  }
+
+  # Build sorted POST selection from time extents for channels
+  foreach my $net ( sort keys %selectextent ) {
+    foreach my $sta ( sort keys %{$selectextent{$net}} ) {
+      foreach my $loc ( sort keys %{$selectextent{$net}{$sta}} ) {
+        foreach my $chan ( sort keys %{$selectextent{$net}{$sta}{$loc}} ) {
+          my ($start,$end) = @{$selectextent{$net}{$sta}{$loc}{$chan}};
+
+          $postdata .= "$net $sta $loc $chan $start $end\n";
+        }
+      }
+    }
+  }
+
+  my $ftime = Time::HiRes::time;
+
+  print STDERR "Metadata URI: '$uri'\n" if ( $verbose >= 2 );
+  print STDERR "Metadata selection (POST):\n$postdata" if ( $verbose > 1 );
+
+  print STDERR "Fetching metadata :: " if ( $verbose >= 1 );
+
+  $datasize = 0;
+  $metadataresponse = "";
+
+  # Fetch metadata from web service using callback routine
+  my $response = ( $inflater ) ?
+    $ua->post($uri, 'Accept-Encoding' => 'gzip', Content => $postdata, ':content_cb' => \&MDCallBack ) :
+    $ua->post($uri, Content => $postdata, ':content_cb' => \&MDCallBack );
+
+  $inflater->inflateReset if ( $inflater );
+
+  if ( $response->code == 204 ) {
+    print (STDERR "No metadata available\n") if ( $verbose >= 1 );
+    return;
+  }
+  elsif ( ! $response->is_success() ) {
+    print (STDERR "Error fetching metadata: "
+	   . $response->code . " :: " . status_message($response->code) . "\n");
+    print STDERR "------\n" . $response->decoded_content . "\n------\n";
+    print STDERR "  URI: '$uri'\n" if ( $verbose >= 2 );
+
+    $exitvalue = 1;
+  }
+  else {
+    printf (STDERR "%s\n", ($nobsprint)?sizestring($datasize):"") if ( $verbose >= 1 );
+  }
+
+  my $duration = Time::HiRes::time - $ftime;
+  my $rate = $datasize/(($duration)?$duration:0.000001);
+  printf (STDERR "Received %s of metadata in %.1f seconds (%s/s)\n",
+	  sizestring($datasize), $duration, sizestring($rate)) if ( $verbose >= 0 );
+
+  # Return if no metadata received
+  return if ( length $metadataresponse <= 0 );
+
+  my $totalepochs = 0;
+  my $ptime = Time::HiRes::time;
+
+  print STDERR "Parsing metadata and generating requests... " if ( $verbose >= 1 );
+
+  # Matching request entries to metadata.
+  #
+  # This is a many-to-many relationship due to the wildcards, a single
+  # request entry can match multiple metadata entries and a single metadata
+  # entry can match multiple request entries.
+  #
+  # Loop through each metadata return line and do the following:
+  #  1) insert into metadata storage list
+  #  2) search for matching user selection entries and
+  #     a) create request hash entries for each selection that matches using the
+  #        original request time window.
+  #     b) track the largest combined metadata time window for each channel
+  #        for requesting secondary metadata (SACPZ and RESP).
+
+  foreach my $line ( split (/[\n\r]+/, $metadataresponse) ) {
+    chomp $line;
+    next if ( $line =~ /^#.*/ );  # Skip comment lines beginning with '#'
+
+    my ($mnet,$msta,$mloc,$mchan,$mlat,$mlon,$melev,$mdepth,$mazimuth,$mdip,$minstrument,
+        $mscale,$mscalefreq,$mscaleunits,$msamplerate,$mstart,$mend) = split(/\|/, $line);
+
+    # Translate metadata location ID to "--" if it is spaces or empty
+    $mloc = "--" if ( $mloc eq "  " || $mloc eq "" );
+
+    # Cleanup start and end strings, with truncation to 2038-01-01T00:00:00 for older Perls
+    my ($y,$mo,$d,$h,$m,$s) = $mstart =~ /^(\d{4,4})[-\/,:](\d{1,2})[-\/,:](\d{1,2})[-\/,:T](\d{1,2})[-\/,:](\d{1,2})[-\/,:](\d{1,2}).*/;
+    my $cstart = ( $y >= 2038 ) ? "2038-01-01T00:00:00" : sprintf ("%04d-%02d-%02dT%02d:%02d:%02d", $y,$mo,$d,$h,$m,$s);
+    my ($y,$mo,$d,$h,$m,$s) = $mend   =~ /^(\d{4,4})[-\/,:](\d{1,2})[-\/,:](\d{1,2})[-\/,:T](\d{1,2})[-\/,:](\d{1,2})[-\/,:](\d{1,2}).*/;
+    my $cend =   ( $y >= 2038 || ! $mend ) ? "2038-01-01T00:00:00" : sprintf ("%04d-%02d-%02dT%02d:%02d:%02d", $y,$mo,$d,$h,$m,$s);
+
+    # Determine epoch times for metadata start and end for matching below
+    my $cstart = str2time ($cstart, "UTC");
+    my $cend = str2time ($cend, "UTC");
+
+    # Track if metadata has been added to @metadata, only add once if matching a request
+    my $metadatalisted = 0;
+
+    # Match metadata to selections (requests) using nested hash of (compiled) regexes
+    foreach my $knet ( keys %selectmatch ) {
+      next if ( $mnet !~ $knet );
+
+      foreach my $ksta ( keys %{$selectmatch{$knet}} ) {
+        next if ( $msta !~ $ksta );
+
+        foreach my $kloc ( keys %{$selectmatch{$knet}{$ksta}} ) {
+          next if ( $mloc !~ $kloc );
+
+          foreach my $kchan ( keys %{$selectmatch{$knet}{$ksta}{$kloc}} ) {
+            next if ( $mchan !~ $kchan );
+
+            # Check for time overlap (intersection) with metadata
+            foreach my $timekey ( keys %{$selectmatch{$knet}{$ksta}{$kloc}{$kchan}} ) {
+              my ($kstart,$kend) = split (/\|/, $timekey);
+
+              # If time ranges intersect add to request hash, account for unspecified/undef time entries
+              if ( ($cstart <= $kend || ! $kend) && ($cend >= $kstart || ! $kstart) ) {
+                my ($sstart,$send) = split (/\|/, $selectmatch{$knet}{$ksta}{$kloc}{$kchan}{$timekey});
+
+                # Push channel epoch metadata into storage list
+                if ( ! $metadatalisted ) {
+                  push (@{$datacenter{$dckey}{metadata}},
+                        "$mnet|$msta|$mloc|$mchan|$mstart|$mend|$mlat|$mlon|$melev|$mdepth|$mazimuth|$mdip|$minstrument|$msamplerate|$mscale|$mscalefreq|$mscaleunits");
+                  $metadatalisted = 1;
+                  $totalepochs++;
+                }
+
+                # Add entry to request hash with value of matching metadata
+                $datacenter{$dckey}{request}->{"$mnet|$msta|$mloc|$mchan|$sstart|$send"} = "$mstart|$mend";
+
+                # Track widest metadata range for NSLC for SACPZ and RESP requests
+                if ( ! exists $datacenter{$dckey}{metarequest}->{"$mnet|$msta|$mloc|$mchan"} ) {
+                  $datacenter{$dckey}{metarequest}->{"$mnet|$msta|$mloc|$mchan"} = "$cstart|$cend";
+                }
+                else {
+                  my ($vstart,$vend) = split (/\|/, $datacenter{$dckey}{metarequest}->{"$mnet|$msta|$mloc|$mchan"});
+
+                  $vstart = $cstart if ( $cstart < $vstart );
+                  $vend = $cend if ( $cend > $vend );
+
+                  $datacenter{$dckey}{metarequest}->{"$mnet|$msta|$mloc|$mchan"} = "$vstart|$vend";
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  } # End of looping through metadata results
+
+  printf STDERR "Done (%.1f seconds)\n", Time::HiRes::time - $ptime if ( $verbose >= 1 );
+
+  return $totalepochs;
+} # End of FetchMetaDataHelper()
+
+
+######################################################################
+# MDCallBack:
+#
+# A call back for LWP downloading of metadata.
+#
+# Add received data to metadataresponse string, tally up the received
+# data size and print and updated (overwriting) byte count string.
+######################################################################
+sub MDCallBack {
+  my ($data, $response, $protocol) = @_;
+  $datasize += length($data);
+
+  if ( $response->content_encoding() =~ /gzip/ ) {
+    my $datablock = "";
+    $inflater->inflate($data, $datablock);
+    $metadataresponse .= $datablock;
+  }
+  else {
+    $metadataresponse .= $data;
+  }
+
+  if ( $verbose >= 1 && ! $nobsprint ) {
+    printf (STDERR "%-10.10s\b\b\b\b\b\b\b\b\b\b", sizestring($datasize));
+  }
+}
+
+
+######################################################################
+# mktimestring (time, [withSubSeconds, [withZSuffix]]):
+#
+# Return a time string in YYYY-MM-DDTHH:MM:SS[.ssssss][Z] format
+# for the specified time value.
+#
+# If 'withSubSeconds' is true include microsecond resolution.
+# If 'withZSuffix' is true inlude a 'Z' TZ designator suffix.
+######################################################################
+sub mktimestring {
+  my $time = shift;
+  my $withSubSeconds = shift;
+  my $withZSuffix = shift;
+
+  return undef if ( ! $time );
+
+  my ($sec,$min,$hour,$mday,$mon,$year) = gmtime ($time);
+
+  $year += 1900;
+  $mon += 1;
+
+  my $timestr = sprintf ("%04d-%02d-%02dT%02d:%02d:%02d",
+		                     $year,$mon,$mday,$hour,$min,$sec);
+
+  # Add subseconds at microsecond resolution if requested
+  if ( $withSubSeconds ) {
+    my $usec = int (($time - int $time) * 1000000.0 + 0.5);
+    $timestr .= sprintf (".%06d", $usec);
+  }
+
+  # Add 'Z' for denoting UTC time zone if requested
+  if ( $withZSuffix ) {
+    $timestr .= "Z";
+  }
+
+  return $timestr;
+}
+
+
+######################################################################
+# sizestring (bytes):
+#
+# Return a clean size string for a given byte count.
+######################################################################
+sub sizestring { # sizestring (bytes)
+  my $bytes = shift;
+
+  if ( $bytes < 1000 ) {
+    return sprintf "%d Bytes", $bytes;
+  }
+  elsif ( ($bytes / 1024) < 1000 ) {
+    return sprintf "%.1f KB", $bytes / 1024;
+  }
+  elsif ( ($bytes / 1024 / 1024) < 1000 ) {
+    return sprintf "%.1f MB", $bytes / 1024 / 1024;
+  }
+  elsif ( ($bytes / 1024 / 1024 / 1024) < 1000 ) {
+    return sprintf "%.1f GB", $bytes / 1024 / 1024 / 1024;
+  }
+  elsif ( ($bytes / 1024 / 1024 / 1024 / 1024) < 1000 ) {
+    return sprintf "%.1f TB", $bytes / 1024 / 1024 / 1024 / 1024;
+  }
+  else {
+    return "";
+  }
+} # End of sizestring()
+
+
+######################################################################
+#
+# Package RequestAgent: a superclass for LWP::UserAgent with override
+# of LWP::UserAgent methods to set default user agent and handle
+# authentication credentials.
+#
+######################################################################
+BEGIN {
+  use LWP;
+  package RequestAgent;
+  our @ISA = qw(LWP::UserAgent);
+
+  sub new
+    {
+      my $self = LWP::UserAgent::new(@_);
+
+      # Set up UserAgent
+      my $fulluseragent = $useragent;
+      $fulluseragent .= " ($appname)" if ( $appname );
+      $self->agent($fulluseragent);
+
+      # Follow redirects on POST method in addition to GET and HEAD
+      push @{ $self->requests_redirectable }, 'POST';
+
+      # Support non-persisent, session cookies
+      $self->cookie_jar ( {} );
+
+      $self;
+    }
+
+  sub get_basic_credentials
+    {
+      my ($self, $realm, $uri) = @_;
+
+      if ( defined $auth ) {
+        return split(':', $auth, 2);
+      }
+      elsif (-t) {
+        my $netloc = $uri->host_port;
+        print "\n";
+        print "Enter username for $realm at $netloc: ";
+        my $user = <STDIN>;
+        chomp($user);
+        return (undef, undef) unless length $user;
+        print "Password: ";
+        system("stty -echo");
+        my $password = <STDIN>;
+        system("stty echo");
+        print "\n";  # because we disabled echo
+        chomp($password);
+        return ($user, $password);
+      }
+      else {
+        return (undef, undef)
+      }
+    }
+} # End of LWP::UserAgent override

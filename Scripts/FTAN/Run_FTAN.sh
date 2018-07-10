@@ -22,13 +22,18 @@ per_max=40	#    maximum period to try to measure
 #########################
 
 currentdir=`pwd`
-datadir=/data/dna/rmartin/Ambient_noise/Alaska/LATEST/COR/STACK/SYM
+datadir=/data/dna/rmartin/Ambient_noise/Alaska/LATEST/COR/STACK/SYM/region_files
 station_lst_file=/data/dna/rmartin/Ambient_noise/Alaska/LATEST/station.list
 
 if [ ! -d $datadir ]; then
     echo "Selected directory $datadir does not exit!"
     exit 1
 fi 
+
+if [ ! -f $station_lst_file ]; then
+    echo "Station list file $station_lst_file does not exist"
+    exit 1
+fi
 
 cd $datadir
 

@@ -29,7 +29,7 @@ get_file_name_from_full_path
 #include "ant_db.h"
 
 /* global constants */
-#define NPTS_SAC_FILE_MAX 20000   //This value is lower than previous declarations because the correlation files are assumed to have less lag time than a full day
+#define NPTS_SAC_FILE_MAX 50000   //This value is lower than previous declarations because the correlation files are assumed to have less lag time than a full day
 
 
 /*-------------subroutines--------------*/
@@ -246,6 +246,7 @@ int main(int argc, char *argv[])
 		sprintf(all_cor_stations[l].name,"%s",station);
 		sprintf(all_cor_stations[l].component,"%s",component);
 		sprintf(all_cor_stations[l].network,"%s",station_net);
+		printf("%s %s %s\n",station,component,station_net);
 		l++;
 	}		
 	fclose(list_file);
@@ -272,10 +273,17 @@ int main(int argc, char *argv[])
            This only works with the default filestructure and naming conventions.
            You are now warned.
         */
+
+	printf("%i\n",nstations);
 	for (l=0; l<nstations-1; l++) {
+	        //printf("Hello\n");
 		sprintf(first_part,"COR_%s_%s_%s.",all_cor_stations[l].network, all_cor_stations[l].name, all_cor_stations[l].component);
 		printf("working on %s %s %s\n",all_cor_stations[l].network, all_cor_stations[l].name, all_cor_stations[l].component);
+		//printf("Hello\n");
 		for (k=l+1; k<nstations; k++) {
+		        //printf("%i\n",k);
+		        //printf("%s_%s_%s.SAC\n", all_cor_stations[k].network, all_cor_stations[k].name, all_cor_stations[k].component);
+			
 			sprintf(second_part,"%s_%s_%s.SAC", all_cor_stations[k].network, all_cor_stations[k].name, all_cor_stations[k].component);
 			
 			sprintf(out_file_name,"%s/%s%s",output_directory,first_part,second_part);
@@ -295,7 +303,7 @@ int main(int argc, char *argv[])
 					}
 					for (m = ms; m<= me; m++) {
 						sprintf(ff_name,"%d/%02d/%s%s",y,m,first_part,second_part);
-//						printf("%s\n",ff_name);
+						printf("%s\n",ff_name);
 						if (is_first_sac_file_flag == 1) {
 							if ( ( read_sac_d(ff_name,signal,&(sac_header),NPTS_SAC_FILE_MAX) == 0) ) {
 								skip_flag = 1;
@@ -353,6 +361,7 @@ int main(int argc, char *argv[])
 				}  // end years
 				//output the stacked sac file 
 				if (ncors > 0 && sac_header.user0 > 0.0) {
+				        printf("Writing SAC file");
 					write_sac_d(out_file_name,signal,&(sac_header));
 					fprintf(temp_file,"%s%s  \t%3.0f\n",first_part,second_part, sac_header.user0);
 				}

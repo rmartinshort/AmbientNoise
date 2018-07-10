@@ -7,7 +7,7 @@ import glob
 def main():
 
     #alphavals = [25,50,100,200,300,400,500,600]
-    alphavals = [600]
+    alphavals = [500,600,700]
     betavals = [50,100,200,400]
     sigmavals = [100]
 
