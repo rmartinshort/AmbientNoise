@@ -10,7 +10,7 @@
 
 basedir=`pwd`
 #datadir=/data/dna/rmartin/Ambient_noise/Alaska/LATEST/COR/
-datadir=/data/dna/rmartin/Ambient_noise/Alaska/20142016test/COR/
+datadir=/data/dna/rmartin/Ambient_noise/Alaska/20142016test/COR2/
 
 if [ ! -d $datadir ]; then 
     echo "input data directory does not exist"

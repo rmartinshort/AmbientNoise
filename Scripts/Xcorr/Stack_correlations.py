@@ -24,6 +24,9 @@ def main():
     #Name of the directory to which stacked cross correlations are output
 	ofdir = 'STACKS2'
 
+	if not os.path.isdir(ofdir):
+	    os.system('mkdir %s' %ofdir)
+
 	#The file station.list must be present
 	if not os.path.exists('station.list'):
 		print ('station.list must be in this directory')

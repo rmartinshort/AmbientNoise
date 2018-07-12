@@ -336,6 +336,7 @@ int main(int argc, char *argv[])
 			                                //define the lag time
 			                                lag_1 = (sac_header.npts - 1) / 2;
 			                                lag_2 = (temp_header.npts - 1) / 2;
+							printf("%f,%f\n",lag_1,lag_2);
 			                                //first define the central point
 			                                signal[lag_1] = signal[lag_1] + temp[lag_2];
 			                                //choose the lower lag
@@ -370,8 +371,8 @@ int main(int argc, char *argv[])
 	}  // station 1
 	
 	fclose(temp_file);
-	free(signal);
-	free(temp);
+        //free(signal);
+	//free(temp);
 
 	return 0;
 }
