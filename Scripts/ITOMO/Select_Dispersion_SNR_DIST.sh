@@ -6,13 +6,14 @@
 #Runs the select_dispersion_snr_and_dist_phase_only code 
 
 symdir=/data/dna/rmartin/Ambient_noise/Alaska/LATEST/COR/STACK/SYM/region_files
+symdir=/data/dna/rmartin/Ambient_noise/Alaska/20142016test/COR2/STACK/SYM/region_files
 
 nPerFTAN=32
 lagTimeinCors=5001
 minperiod=8
 maxperiod=40
 periodincrement=1
-outputdir=/data/dna/rmartin/Ambient_noise/Alaska/LATEST/COR/STACK/Dispersion_curves_10_3
+outputdir=/data/dna/rmartin/Ambient_noise/Alaska/20142016test/COR2/Dispersion
 
 #make output directory if it doesn't already exist
 if [ ! -d $outputdir ]; then

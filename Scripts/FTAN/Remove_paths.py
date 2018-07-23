@@ -24,13 +24,13 @@ def main():
         print 'Cannot enter given directory %s' %results.indir
 
     #Alaska region
-    minlon = -164
-    maxlon = -129
-    minlat = 56.5
-    maxlat = 69.0
+    minlon = -165
+    maxlon = -128
+    minlat = 55.5
+    maxlat = 70.0
 
     start = '2014-01-01'
-    end = '2017-08-01'
+    end = '2018-05-01'
 
     #Get the details of all the stations in this region
     inventory = client.get_stations(network=None,station=None,level='station',minlongitude=minlon,maxlongitude=maxlon,\

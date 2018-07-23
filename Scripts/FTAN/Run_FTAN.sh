@@ -14,7 +14,7 @@ snr_threshhold=10	#    minimum value for snr to consider an ok measurement
 ffact=1		#    
 taper=1		#    
 snr=.2		# 
-amp_flag=1        #    0 - do not output the amplitude space. 1 - do output the amplitude space
+amp_flag=0      #    0 - do not output the amplitude space. 1 - do output the amplitude space
 #adjust the min and max	#
 #   period:		#
 per_min=8		#    minimum period to try to measure
@@ -22,8 +22,11 @@ per_max=40	#    maximum period to try to measure
 #########################
 
 currentdir=`pwd`
-datadir=/data/dna/rmartin/Ambient_noise/Alaska/LATEST/COR/STACK/SYM/region_files
-station_lst_file=/data/dna/rmartin/Ambient_noise/Alaska/LATEST/station.list
+#datadir=/data/dna/rmartin/Ambient_noise/Alaska/LATEST/COR/STACK/SYM/region_files
+#station_lst_file=/data/dna/rmartin/Ambient_noise/Alaska/LATEST/station.list
+
+datadir=/data/dna/rmartin/Ambient_noise/Alaska/20142016test/COR2/STACK/SYM/region_files
+station_lst_file=/data/dna/rmartin/Ambient_noise/Alaska/20142016test/station.list
 
 if [ ! -d $datadir ]; then
     echo "Selected directory $datadir does not exit!"

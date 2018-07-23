@@ -7,7 +7,9 @@
 
 
 #Directory where the month stacks can be found
+
 stackdir=/data/dna/rmartin/Ambient_noise/Alaska/LATEST/COR/STACK
+stackdir=/data/dna/rmartin/Ambient_noise/Alaska/20142016test/COR2/STACK
 
 if [ ! -d $stackdir ]; then
     echo "Supplied directory $stackdir does not exist"
