@@ -23,7 +23,6 @@ if [ -d $odir ]; then
     rm -rf $odir
 fi
 
->>>>>>> a6e84b18331c9ff3b443a0675dcf57ea65f64e99
 mkdir -p $odir
 
 echo $dbname > params_herm.in

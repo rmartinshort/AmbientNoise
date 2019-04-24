@@ -10,8 +10,8 @@
 % source the location of the station and the station name.
 % I should probably use the c code directly for a surf only inversion
 
-datadir = '/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/Station_grid/Alaska_stations_plus_ghost_500_AK_TA';
-dispersionDataBaseFileName = '/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/phase_data/500/Alaska_ALL.db';
+datadir = '/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/Station_grid/Alaska_stations_plus_ghost_Miller_RF_2.5_Stations_only';
+dispersionDataBaseFileName = '/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/phase_data/400/Alaska_ALL.db';
 cd(sprintf('%s',datadir));
 
 % File IO and read.

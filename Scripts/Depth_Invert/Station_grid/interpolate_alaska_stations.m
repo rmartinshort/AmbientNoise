@@ -12,11 +12,10 @@
 % the velocity on the desired spatial basis. Some slight smoothing is added
 % to make the visuals cleaner
 
-
 % Sets the file name
 
-inputfile='/home/rmartinshort/Documents/Berkeley/funclab/RF_TA_2017/RAYP_BAZ_STACK/TA_joint/alaskastations.3d.mod';
-outputfile='/home/rmartinshort/Documents/Berkeley/funclab/RF_TA_2017/RAYP_BAZ_STACK/TA_joint/alaskastations.3d.mod.smooth';
+inputfile='/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/Station_grid/Alaska_stations_plus_ghost_RF_1999_2017_ALL/alaskastations.3d.mod';
+outputfile='/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/Station_grid/Alaska_stations_plus_ghost_RF_1999_2017_ALL/alaskastations.3d.mod.smooth';
 
 % Open and read the file
 fid = fopen(inputfile,'r');
@@ -31,10 +30,14 @@ F.ExtrapolationMethod = 'none';
 
 % Set the output geometry for the model
 % 266.601/281.78
-xvector = 201.2:0.2:224.2;
-yvector = 58.2:0.2:68.8;
+xvector = 200.2:0.2:224.2;
+yvector = 58.2:0.2:70.2;
 zvector = 0:1:200;
 
+%Old parameters 
+%xvector = 201.2:0.2:224.2;
+%yvector = 58.2:0.2:68.8;
+%zvector = 0:1:200;
 
 % Create a matlab mesh
 [xmesh, ymesh, zmesh] = meshgrid(xvector, yvector, zvector);

@@ -16,8 +16,9 @@ def main():
           print "datadir not provided at command line. Using defaults (hard coded)"
 
           #This is where the files will be located
-          datadir = "/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/Station_grid/Alaska_stations_500"
-          datadir = "/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/Station_grid/Alaska_stations_plus_ghost_500_AK_TA"
+          datadir = "/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/Station_grid/Alaska_stations_400"
+          datadir = "/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/Station_grid/Alaska_stations_plus_ghost_400_AK_TA2"
+          datadir = "/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/Station_grid/Alaska_stations_plus_ghost_Miller_RF_2.5_Stations_only"
 
        cwd = os.getcwd()
 
@@ -42,11 +43,12 @@ def main():
             stlat = row.Lat
 
             print dirname,stlon,stlat
+            if os.path.isdir(dirname):
 
-            #Enter directory, append data to the database and move on
+               #Enter directory, append data to the database and move on
 
-            os.system("awk 'BEGIN{depth=0} {if (NR >= 13) print '%s','%s', depth, $3} {depth=depth+$1}'\
-            %s/end.mod >> alaskastations.3d.mod" %(stlon,stlat,dirname))
+               os.system("awk 'BEGIN{depth=0} {if (NR >= 13) print '%s','%s', depth, $3} {depth=depth+$1}'\
+               %s/end.mod >> alaskastations.3d.mod" %(stlon,stlat,dirname))
 
        os.system("awk '{if ($3 <= 200) print $0}' alaskastations.3d.mod > alaskastations.3d.mod.reduced")
 

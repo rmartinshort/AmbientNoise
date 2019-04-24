@@ -10,6 +10,8 @@ faults=/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/plotting
 yakslab=/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/plotting/plottingdata/Yakutat_subducted_extent.dat
 volcanoes=/home/rmartinshort/Documents/Berkeley/Ambient_Noise/Depth_invert/plotting/plottingdata/Alaska_volcanoes.dat
 
+non_RF_stations=Alaska_stations_noRF.txt
+
 
 if [ -z "$1" ]; then
     echo "No arguments given"
@@ -38,6 +40,9 @@ $GMT psxy $volcanoes -J$J -Rd$R -St0.4 -Gred -O -K -Wthinnest,black >> $ps
 
 #Plot the stations
 $GMT psxy $stations -J$J -Rd$R -Si0.2 -Gblack -O -Wthinnest,black >> $ps
+
+#Plot the stations that don't have RFs
+#$GMT psxy $non_RF_stations -J$J -Rd$R -Si0.2 -Ggreen -O -Wthinnest,black >> $ps
 
 #Post-processing stuff
 $GMT ps2raster $ps -P -Tf

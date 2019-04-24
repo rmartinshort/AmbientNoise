@@ -18,7 +18,6 @@ maxlon=237.4
 snr=10
 uncertainty=0.2
 
-
 cwd=`pwd`
 datadir=/data/dna/rmartin/Ambient_noise/Alaska/ALL_DATA/COR/STACK/Dispersion_curves_10_3/
 
