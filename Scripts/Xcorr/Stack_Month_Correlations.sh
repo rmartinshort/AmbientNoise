@@ -9,7 +9,8 @@
 #and make the parameter file according to the insructions below
 
 basedir=`pwd`
-datadir=/data/dna/rmartin/Ambient_noise/Alaska/ALL_DATA/COR
+#datadir=/data/dna/rmartin/Ambient_noise/Alaska/LATEST/COR/
+datadir=/data/dna/rmartin/Ambient_noise/Alaska/20142016test/COR2/
 
 if [ ! -d $datadir ]; then 
     echo "input data directory does not exist"
@@ -38,4 +39,3 @@ paramfile=$1
 /data/dna/rmartin/Ambient_noise/CODES/src/Stack_correlations/bin/Stack_RP_with_IO.exe $paramfile
 
 cd $basedir
-cd 

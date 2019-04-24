@@ -31,7 +31,7 @@ for type in "${types[@]}"; do
 	echo "rays.${per}.${type}.dat" >> param.dat
 	echo "checkerboard.${per}.${type}.dat" >> param.dat
 
-create_ant_checkerboard param.dat
+/data/dna/rmartin/Ambient_noise/CODES/src/checkerboard/bin/create_ant_checkerboard.exe param.dat
  
 ./Run_Tomo.sh rays.${per}.${type}.dat $per
 ./Run_Tomo.sh data${per}s_${type}.txt $per

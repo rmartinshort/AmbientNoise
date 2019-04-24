@@ -1,5 +1,5 @@
-#define MAX_STATIONS 1600
-#define MAX_EVENTS 32
+#define MAX_STATIONS 5000
+#define MAX_EVENTS 200
 
 typedef struct EVENT {
         int year;

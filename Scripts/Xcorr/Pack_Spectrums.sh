@@ -85,6 +85,9 @@ cat param.dat
 echo "You can reuse this in future runs as:"
 echo "make_ant_db param.dat"
 
+#The below is for debugging - uncomment if you want to manually check the parameter files that get 
+#made for each month 
+
 #read -n1 -r -p  "if this file looks correct, hit space to continue" key
 #if [ "$key" = '' ]; then 
    #Edit the excutable once the new version is ready

@@ -3,15 +3,14 @@ import glob
 
 def main():
 
-    dispfiles = glob.glob('*DISP.1')
+  dispfiles = glob.glob('*DISP.1')
+    
+  outfile = open('sacFileList','w')
 
-    outfile = open('sacFileList','w')
+  for infile in dispfiles:
+     outfile.write('%s\n' %infile[:-9])
 
-    for infile in dispfiles:
-
-	outfile.write('%s\n' %infile[:-9])
-
-    outfile.close()
+  outfile.close()
 
 
 if __name__ == "__main__":

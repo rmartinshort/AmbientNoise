@@ -9,7 +9,8 @@
 cwd=`pwd`
 
 #User enters the directory containing the ANT data
-datadir="/data/dna/rmartin/Ambient_noise/Alaska/ALL_DATA"
+#datadir="/data/dna/rmartin/Ambient_noise/Alaska/LATEST"
+datadir="/data/dna/rmartin/Ambient_noise/Alaska/20142016test"
 
 if [ ! -d $datadir ]; then
 	echo "No directory $datadir found"
@@ -28,12 +29,12 @@ endday=31
 deleteFlag=0
 db=tmp.db
 lag=5000
-outputCorDir=COR
+outputCorDir=COR2
 stackFlag=1
 meanFlag=0
 sdFlag=0
 
-years=( `seq -w  2014 2017` )
+years=( `seq -w  2014 2018` )
 months=( `seq -w  1 12` )
 
 for year in "${years[@]}"; do
@@ -50,8 +51,7 @@ for year in "${years[@]}"; do
 	#Determine the end day value within each month
 	echo ${year}/${month}
 
-	#Check if associated year-month combination exists - is should, but if not bad things happen because of the
-	#cd ../../ command - change this to $basedir
+	#Check if associated year-month combination exists
 
 	if [ -d ${year}/${month} ]; then 
 	   cd ${year}/${month}

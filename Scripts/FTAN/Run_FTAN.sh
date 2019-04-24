@@ -14,7 +14,7 @@ snr_threshhold=10	#    minimum value for snr to consider an ok measurement
 ffact=1		#    
 taper=1		#    
 snr=.2		# 
-amp_flag=1        #    0 - do not output the amplitude space. 1 - do output the amplitude space
+amp_flag=0      #    0 - do not output the amplitude space. 1 - do output the amplitude space
 #adjust the min and max	#
 #   period:		#
 per_min=8		#    minimum period to try to measure
@@ -22,27 +22,25 @@ per_max=40	#    maximum period to try to measure
 #########################
 
 currentdir=`pwd`
-datadir=/data/dna/rmartin/Ambient_noise/Alaska/ALL_DATA/COR/STACK/SYM
+#datadir=/data/dna/rmartin/Ambient_noise/Alaska/LATEST/COR/STACK/SYM/region_files
+#station_lst_file=/data/dna/rmartin/Ambient_noise/Alaska/LATEST/station.list
+
+datadir=/data/dna/rmartin/Ambient_noise/Alaska/20142016test/COR2/STACK/SYM/region_files
+station_lst_file=/data/dna/rmartin/Ambient_noise/Alaska/20142016test/station.list
 
 if [ ! -d $datadir ]; then
     echo "Selected directory $datadir does not exit!"
     exit 1
 fi 
 
-cd $datadir
-
-if [ "$#" == 2 ]; then
-	station_lst_file=$1
-	indir=$2
-else
-	echo "Please input the station list (list of stations in second column)"
-	station_lst_file=`return_string `
-	echo "Please input the directory with symmetric correlations"
-	indir=`return_string `
+if [ ! -f $station_lst_file ]; then
+    echo "Station list file $station_lst_file does not exist"
+    exit 1
 fi
 
-cp $station_lst_file $indir
-cd $indir
+cd $datadir
+
+cp $station_lst_file $datadir
 
 #stations=( `cat ${station_lst_file} | awk '{print $2}'` )
 #echo $stations 

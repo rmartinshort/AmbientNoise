@@ -1,8 +1,8 @@
 #RMS Feb 2017
 
 BIN = bin
-CFLAGS = -Wall -g -O3
-HEADERFLAGS = -I../../../include
+CFLAGS = -Wall -g
+HEADERFLAGS = -I/data/dna/rmartin/Ambient_noise/CODES/include/
 LIBFLAGS = -lm 
 
 CC = gcc

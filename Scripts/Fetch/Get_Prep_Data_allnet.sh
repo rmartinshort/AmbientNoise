@@ -11,13 +11,14 @@
 #to download from
 
 #Enter the directory where you want to build the data structure here
-datadir=/data/dna/rmartin/Ambient_noise/Alaska/ALL_DATA
+datadir=/data/dna/rmartin/Ambient_noise/Alaska/append2018
 
 cwd=`pwd`
 
 if [ ! -d $datadir ]; then
     echo "The directory $datadir does not exist!"
-    exit 1
+    mkdir $datadir
+    echo "Made datadir"
 fi
 
 cd $datadir
@@ -37,7 +38,7 @@ lonmax=-123
 #This could be a lot of data, so be careful! 
 
 
-years=( 2014 2015 2016 2017 )
+years=( 2017 2018 )
 months=( `seq -w 1 12` )
 days=( `seq -w 1 31` )
 

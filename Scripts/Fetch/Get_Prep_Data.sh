@@ -11,7 +11,7 @@
 #to download from
 
 #Enter the directory where you want to build the data structure here
-datadir=/data/dna/rmartin/Ambient_noise/Alaska/AK_ONLY
+datadir=/data/dna/rmartin/Ambient_noise/Alaska/TAONLY_test
 
 cwd=`pwd`
 
@@ -32,7 +32,7 @@ lonmin=-171
 lonmax=-123
 
 #Not needed if we want all the available stations
-NETWORK='AK'
+NETWORK='TA'
 #If network is not specified, all available data within a region will be obtained
 #This could be a lot of data, so be careful! 
 
